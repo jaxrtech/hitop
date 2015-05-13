@@ -23,7 +23,8 @@ let private arith2 name f = (fun engine ->
         stack |> Stack.push (Value(f a b))
         engine
 
-    | _, _ -> engine
+    | _, _ ->
+        engine // nop
 )
 
 let add = arith2 "add" (+)
