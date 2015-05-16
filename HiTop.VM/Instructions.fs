@@ -7,7 +7,7 @@ open HiTop.VM.Engine
 let private make name op =
     { ShortName = name; Op = op }
 
-let private arith2 name f = (fun engine ->
+let private arith2 name f = make name (fun engine ->
     let stack = engine.Stack
 
     if engine |> Engine.isEndOfProgram
@@ -27,14 +27,25 @@ let private arith2 name f = (fun engine ->
         engine // nop
 )
 
-let add = arith2 "add" (+)
+module Arithmetic =
+    let add = arith2 "add" (+)
 
-let sub = arith2 "sub" (-)
+    let sub = arith2 "sub" (-)
 
-let mul = arith2 "mul" (*)
+    let mul = arith2 "mul" (*)
 
-let div = arith2 "div" (fun a -> function
-                        | 0uy -> 0uy
-                        | b   -> a / b)
+    let div = arith2 "div" (fun a -> function
+                            | 0uy -> 0uy
+                            | b   -> a / b)
 
-let ``mod`` = arith2 "mod" (%)
+    let ``mod`` = arith2 "mod" (%)
+
+    let all =
+        [add; sub; mul; div; ``mod``;]
+
+// Encoding marker for bytes
+// There is no logic since the next byte no matter what will be interpreted
+// as the byte value
+let value = make "val" (fun x -> x)
+
+let all = value :: Arithmetic.all

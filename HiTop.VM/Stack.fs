@@ -3,10 +3,13 @@
 open System.Collections.Generic
 open HiTop.VM.CoreTypes
 
-type Stack = List<StackElement>
+type Stack = IList<StackElement>
 
 let create () =
     new List<StackElement>()
+
+let count (stack: Stack) =
+    stack.Count
 
 let isEmpty (stack: Stack) =
     stack.Count = 0
@@ -37,22 +40,24 @@ let drop (stack: Stack) =
     stack |> dropn 1
 
 let popAt (i: int) (stack: Stack) =
-    match stack |> peekAt i with
-    | None -> None
-    | Some x ->
+    stack 
+    |> peekAt i
+    |> Option.map (fun x ->
         stack.RemoveAt(i)
-        Some x
+        x)
 
 let pop (stack: Stack) =
     stack |> popAt 0
 
 let pushAt (i: int) (element: StackElement) (stack: Stack) =
-    let i = i % stack.Count
+    assert (stack.Count >= 0)
 
-    match i with
-    | 0 when isEmpty stack  -> ()
-    | 0 when notEmpty stack -> stack.Insert(0, element)
-    | i                     -> stack.Insert(i, element)
+    // This prevents `i % 0` which would result in a DivideByZeroException
+    let i = match stack.Count with
+            | 0 -> 0
+            | n -> i % n
+
+    stack.Insert(i, element)
 
 let push (element: StackElement) (stack: Stack) =
     stack |> pushAt 0 element

@@ -7,6 +7,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop", "HiTop\HiTop.fsproj
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.VM", "HiTop.VM\HiTop.VM.fsproj", "{8004B76D-8F96-4A3D-96B8-2527C7CC3C40}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.VM.Tests", "HiTop.VM.Tests\HiTop.VM.Tests.fsproj", "{8C0EACBF-E58A-4306-AB69-2DAFA4202657}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{8004B76D-8F96-4A3D-96B8-2527C7CC3C40}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8004B76D-8F96-4A3D-96B8-2527C7CC3C40}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8004B76D-8F96-4A3D-96B8-2527C7CC3C40}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C0EACBF-E58A-4306-AB69-2DAFA4202657}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C0EACBF-E58A-4306-AB69-2DAFA4202657}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C0EACBF-E58A-4306-AB69-2DAFA4202657}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C0EACBF-E58A-4306-AB69-2DAFA4202657}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
