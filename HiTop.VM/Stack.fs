@@ -28,13 +28,20 @@ let peek (stack: Stack) =
     stack |> peekAt 0
     
 let dropn (n: int) (stack: Stack) =
+    let n' = match stack.Count with
+             | count when n <= 0     -> 0
+             | count when n >= count -> count
+             | _ -> n
+
     let rec f = function
     | 0 -> ()
-    | _ ->
+    | n ->
         stack.RemoveAt(0)
         f (n - 1)
     
-    if n <= stack.Count then f n
+    match n' with
+    | 0 -> ()
+    | _ -> f n
 
 let drop (stack: Stack) =
     stack |> dropn 1
@@ -53,11 +60,11 @@ let pushAt (i: int) (element: StackElement) (stack: Stack) =
     assert (stack.Count >= 0)
 
     // This prevents `i % 0` which would result in a DivideByZeroException
-    let i = match stack.Count with
-            | 0 -> 0
-            | n -> i % n
+    let i' = match stack.Count with
+             | 0 -> 0
+             | n -> i % n
 
-    stack.Insert(i, element)
+    stack.Insert(i', element)
 
 let push (element: StackElement) (stack: Stack) =
     stack |> pushAt 0 element
