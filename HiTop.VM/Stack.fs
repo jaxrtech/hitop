@@ -78,10 +78,10 @@ let pushAt (i: int) (element: StackElement) (stack: Stack) =
               | n -> i % n
 
     let i' =
-        // Make sure to account for moving forward one position
+        // Make sure the displaced element ends up on the right not the lefts
         let x = stack |> indexFromPos pos
         match stack.Count with
-        | 0 -> x
+        | 0 -> 0
         | _ -> x + 1
 
     stack.Insert(i', element)

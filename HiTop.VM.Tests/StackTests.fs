@@ -12,20 +12,30 @@ let shouldEqualAsValue x y =
     equalAsOptValue (Value(x)) y
     |> should be True
 
+let shouldNotEqualAsValue x y =
+    equalAsOptValue (Value(x)) y
+    |> should be False
+
+let nextRandomByte () =
+    random.Next(int Byte.MinValue, int Byte.MaxValue)
+    |> byte
+
 /// pushes `n` number of random bytes onto the stack
 let pushrandn n stack =
-    let rand () =
-        random.Next(int Byte.MinValue, int Byte.MaxValue)
-        |> byte
-        
-    let rec f = function
-        | 0 -> ()
+    let rec f (results: ResizeArray<byte>) = function
+        | 0 -> results
         | n ->
-            let x = rand ()
-            stack |> Stack.push (Value(x))
-            f (n - 1)
+            let x = nextRandomByte ()
 
-    f n
+            stack |> Stack.push (Value(x))
+
+            // The last item on the stack is index 0
+            results.Insert(0, x)
+
+            f results (n - 1)
+
+    let results = new ResizeArray<byte>()
+    f results n
 
 [<Fact>]
 let ``when created should be empty.`` () =
@@ -39,7 +49,7 @@ let ``when created should be empty.`` () =
 let ``when pushed and popped completely should be empty.`` () =
     let s = Stack.create ()
     
-    s |> Stack.push (CoreTypes.Value(10uy))
+    s |> Stack.push (Value(10uy))
     s |> Stack.pop |> ignore
     
     s |> Stack.count |> should equal 0
@@ -48,9 +58,9 @@ let ``when pushed and popped completely should be empty.`` () =
 let ``when dropping an element should work the same as poping an element.`` () =
     let s = Stack.create ()
 
-    s |> Stack.push (CoreTypes.Value(10uy))
-    s |> Stack.push (CoreTypes.Value(20uy))
-    s |> Stack.push (CoreTypes.Value(30uy))
+    s |> Stack.push (Value(10uy))
+    s |> Stack.push (Value(20uy))
+    s |> Stack.push (Value(30uy))
 
     s |> Stack.pop |> ignore
     s |> Stack.drop
@@ -63,7 +73,7 @@ let ``when dropping elements should only drop the specified number of elements.`
     let s = Stack.create ()
 
     // 10 - 4 = 6
-    s |> pushrandn 10
+    s |> pushrandn 10 |> ignore
     s |> Stack.count |> should equal 10
     s |> Stack.dropn 4
     s |> Stack.count |> should equal 6
@@ -81,7 +91,7 @@ let ``when dropping elements should never fail or go out of bounds.`` () =
 [<Fact>]
 let ``when dropping a negative or 0 number of elements should never fail or go out of founds.`` () =
     let s = Stack.create ()
-    s |> pushrandn 10
+    s |> pushrandn 10 |> ignore
     
     s |> Stack.dropn 0
     s |> Stack.count |> should equal 10
@@ -175,4 +185,55 @@ let ``when popping or peeking at an empty stack should result in None and not ru
     checkFunctions (Stack.pop) (Stack.popAt)
     checkFunctions (Stack.peek) (Stack.peekAt)
 
+/// returns a value from (n..MaxValue)
+let randomWrappingIndex n =
+    random.Next(n, Int32.MaxValue)
 
+let testIndexWrapping f =
+    let s = Stack.create ()
+    let n = random.Next(0, 100)
+
+    let values = s |> pushrandn n
+    let i = randomWrappingIndex n
+
+    s
+    |> Stack.peekAt i
+    |> shouldEqualAsValue (values.[i % n])
+
+[<Fact>]
+let ``when peeking at an index, the operation should support wrap arround correctly.`` () =
+    testIndexWrapping Stack.peekAt
+
+[<Fact>]
+let ``when popping from an index, the operation should support wrap arround correctly.`` () =
+    testIndexWrapping Stack.popAt
+
+[<Fact>]
+let ``when dropping from an index, the operation should support wrap arround correctly.`` () =
+    let s = Stack.create ()
+    let n = random.Next(0, 100)
+
+    let values = s |> pushrandn n
+    let i = randomWrappingIndex n
+
+    s |> Stack.dropAt i
+
+    s |> Stack.peekAt i |> shouldNotEqualAsValue (values.[i % n])
+    s |> Stack.count |> should equal (n - 1)
+
+[<Fact>]
+let ``when pushing at an index, the operation should support wrap arround correctly.`` () =
+    let s = Stack.create ()
+    let n = random.Next(0, 100)
+
+    let values = s |> pushrandn n
+
+    let i = randomWrappingIndex n
+    let x = nextRandomByte ()
+
+    s |> Stack.pushAt i (Value(x))
+
+    // You have to add 1 (one) to each wrap around since the size the stack just grew to get to the
+    // same position otherwise `i % n` will be off
+    s |> Stack.peekAt (i + ((i / n) * 1)) |> shouldEqualAsValue x
+    s |> Stack.count |> should equal (n + 1)
