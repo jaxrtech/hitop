@@ -38,7 +38,7 @@ let main argv =
         let x = InstructionSet.build Instructions.all
         match x with
         | Failure TooManyInstructions ->
-            failwith "error: too many instructions. number of instructions exceeds 256."
+            failwith "error: too many instructions in instruction set. number of instructions exceeds 256."
         | Success x -> x
 
     let buffer = [| 1uy; 2uy; 3uy; 250uy; |]
