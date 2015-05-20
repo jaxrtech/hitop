@@ -17,15 +17,28 @@ let isEmpty (stack: Stack) =
 let notEmpty (stack: Stack) =
     stack |> isEmpty |> not
 
+let private indexFromPos (pos: int) (stack: Stack) =
+    assert (stack.Count >= 0)
+
+    match stack.Count with
+    | 0 -> 0
+    | _ -> (stack.Count - 1) - pos
+
 let peekAt (i: int) (stack: Stack) =
     if notEmpty stack then
-        let i = i % stack.Count
-        Some (stack.[i])
+        let pos = i % stack.Count
+        let i' = stack |> indexFromPos pos
+        Some (stack.[i'])
     else
         None
 
 let peek (stack: Stack) =
     stack |> peekAt 0
+
+let dropAt (i: int) (stack: Stack) =
+    let pos = i % stack.Count
+    let i' = stack |> indexFromPos pos
+    stack.RemoveAt(i')
     
 let dropn (n: int) (stack: Stack) =
     let n' = match stack.Count with
@@ -36,7 +49,7 @@ let dropn (n: int) (stack: Stack) =
     let rec f = function
     | 0 -> ()
     | n ->
-        stack.RemoveAt(0)
+        stack |> dropAt 0
         f (n - 1)
     
     match n' with
@@ -50,7 +63,7 @@ let popAt (i: int) (stack: Stack) =
     stack 
     |> peekAt i
     |> Option.map (fun x ->
-        stack.RemoveAt(i)
+        stack |> dropAt i
         x)
 
 let pop (stack: Stack) =
@@ -60,9 +73,16 @@ let pushAt (i: int) (element: StackElement) (stack: Stack) =
     assert (stack.Count >= 0)
 
     // This prevents `i % 0` which would result in a DivideByZeroException
-    let i' = match stack.Count with
-             | 0 -> 0
-             | n -> i % n
+    let pos = match stack.Count with
+              | 0 -> 0
+              | n -> i % n
+
+    let i' =
+        // Make sure to account for moving forward one position
+        let x = stack |> indexFromPos pos
+        match stack.Count with
+        | 0 -> x
+        | _ -> x + 1
 
     stack.Insert(i', element)
 
