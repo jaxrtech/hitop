@@ -43,9 +43,4 @@ module Arithmetic =
     let all =
         [add; sub; mul; div; ``mod``;]
 
-// Encoding marker for bytes
-// There is no logic since the next byte no matter what will be interpreted
-// as the byte value
-let value = make "val" (fun x -> x)
-
-let all = value :: Arithmetic.all
+let all = Arithmetic.all

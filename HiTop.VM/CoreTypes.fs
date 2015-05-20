@@ -1,8 +1,11 @@
 ﻿module HiTop.VM.CoreTypes
 
 open System.Collections.Generic
+open System.IO
 
-type BinaryReader = System.IO.BinaryReader
+type Result<'TSuccess,'TFailure> = 
+     | Success of 'TSuccess
+     | Failure of 'TFailure
 
 type UnbuiltInstructionSet = Instruction list
 
@@ -14,7 +17,6 @@ and Instruction = {
     ShortName: string;
     Op: Operation
 }
-
 
 and StackElement =
     | Value of byte

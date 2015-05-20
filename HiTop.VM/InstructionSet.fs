@@ -4,15 +4,11 @@ open System.Collections.Generic
 open System.Collections.ObjectModel
 open HiTop.VM.CoreTypes
 
-type Result<'TSuccess,'TFailure> = 
-     | Success of 'TSuccess
-     | Failure of 'TFailure
-
 type InstructionSetBuildFailure =
      | TooManyInstructions
 
 let check (instructions: UnbuiltInstructionSet) : Result<unit, InstructionSetBuildFailure> =
-    if instructions.Length <= 256
+    if instructions.Length >= 256
     then Failure TooManyInstructions
     else Success ()
 
