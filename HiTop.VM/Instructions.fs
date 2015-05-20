@@ -10,8 +10,7 @@ let private make name op =
 let private arith2 name f = make name (fun engine ->
     let stack = engine.Stack
 
-    if engine |> Engine.isEndOfProgram
-    then engine // TODO: Currying implementation
+    if engine |> Engine.willHalt then engine
     else
 
     let a = stack |> Stack.peekAt 0
