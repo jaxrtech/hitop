@@ -6,28 +6,29 @@ open HiTop.VM.InstructionSet
 
 let eval engine =
     let rec f i (engine: Engine) =
-        if engine.IsHalted then engine
+        if engine |> Engine.willHalt then engine
         else
 
-        let printStack () =
-            printfn "[%d]> %A" (i) (engine.Stack)
+        let printStack i =
+            printfn "[%d]> %A" i (engine.Stack)
+            i + 1
 
         let evalPrintWrapper f =
             match i with
             | 0 ->
-                printStack ()
+                let i = printStack i
                 let x = f ()
-                printStack ()
-                x
+                let i = printStack i
+                (x, i)
             | _ ->
                 let x = f ()
-                printStack ()
-                x
+                let i = printStack i
+                (x, i)
 
         let step () = engine |> Engine.step
-        let engine' = evalPrintWrapper step
+        let engine', i' = evalPrintWrapper step
 
-        f (i + 1) engine'
+        f i' engine'
 
     f 0 engine
 
