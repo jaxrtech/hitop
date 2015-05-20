@@ -25,7 +25,6 @@ and StackElement =
 
 and Engine = {
     NextReadAddress: int64
-    IsHalted: bool
     InstructionSet: BuiltInstructionSet
     Stack: List<StackElement>
     Program: BinaryReader

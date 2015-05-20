@@ -6,7 +6,6 @@ open HiTop.VM.CoreTypes
 
 let createFromStream stream instructionSet =
     { NextReadAddress = 0L;
-      IsHalted = false;
       InstructionSet = instructionSet
       Stack = List<StackElement>();
       Program = new BinaryReader(stream) }
@@ -20,12 +19,11 @@ let createFromBuffer (buffer: byte array) instructionSet =
 let isEndOfProgram (engine: Engine) : bool =
     engine.NextReadAddress = engine.Program.BaseStream.Length
 
-let step (engine: Engine) : Engine =
-    if engine.IsHalted then engine
-    else
+// Allowing for further expansion
+let willHalt = isEndOfProgram
 
-    if isEndOfProgram engine then
-        { engine with IsHalted = true }
+let step (engine: Engine) : Engine =
+    if willHalt engine then engine
     else
 
     let raw = engine.Program.ReadByte()
