@@ -5,8 +5,8 @@ open HiTop.VM.CoreTypes
 
 type Stack = IList<StackElement>
 
-let create () =
-    new List<StackElement>()
+let create (): IList<StackElement> =
+    upcast new ResizeArray<StackElement>()
 
 let count (stack: Stack) =
     stack.Count
