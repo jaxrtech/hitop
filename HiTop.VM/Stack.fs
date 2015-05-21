@@ -88,3 +88,13 @@ let pushAt (i: int) (element: StackElement) (stack: Stack) =
 
 let push (element: StackElement) (stack: Stack) =
     stack |> pushAt 0 element
+
+let peekAtHook (i: int) (stack: Stack) =
+    // NOTE: There is no way to check that the `peekAt` and `popAt` will return the save value since
+    //       since `StackElement` does not have structural equality
+
+    (stack |> peekAt i,
+     fun () -> stack |> popAt i |> ignore)
+
+let peekHook (stack: Stack) =
+    stack |> peekAtHook 0

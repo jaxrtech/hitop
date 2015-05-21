@@ -4,11 +4,8 @@ open HiTop.VM
 open HiTop.VM.CoreTypes
 open HiTop.VM.InstructionSet
 
-let eval engine =
+let eval engine : Engine =
     let rec f i (engine: Engine) =
-        if engine |> Engine.willHalt then engine
-        else
-
         let printStack i =
             printfn "[%d]> %A" i (engine.Stack)
             i + 1
@@ -28,7 +25,10 @@ let eval engine =
         let step () = engine |> Engine.step
         let engine', i' = evalPrintWrapper step
 
-        f i' engine'
+        if engine'.IsHalted then
+            engine'
+        else
+            f i' engine'
 
     f 0 engine
 
@@ -41,10 +41,12 @@ let main argv =
             failwith "error: too many instructions in instruction set. number of instructions exceeds 256."
         | Success x -> x
 
-    let buffer = [| 1uy; 2uy; 3uy; 250uy; |]
+    let buffer = [| 250uy; 1uy; 2uy; |]
     let engine = Engine.createFromBuffer buffer instructionSet
     
     eval engine |> ignore
+
+    printfn "   > Done"
     System.Console.ReadLine() |> ignore
 
     0

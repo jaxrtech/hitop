@@ -5,9 +5,10 @@ open System.IO
 open HiTop.VM.CoreTypes
 
 let createFromStream stream instructionSet =
-    { NextReadAddress = 0L;
+    { IsHalted = false
+      NextReadAddress = 0L
       InstructionSet = instructionSet
-      Stack = List<StackElement>();
+      Stack = List<StackElement>()
       Program = new BinaryReader(stream) }
 
 let createFromBuffer (buffer: byte array) instructionSet =
@@ -19,11 +20,42 @@ let createFromBuffer (buffer: byte array) instructionSet =
 let isEndOfProgram (engine: Engine) : bool =
     engine.NextReadAddress = engine.Program.BaseStream.Length
 
-// Allowing for further expansion
-let willHalt = isEndOfProgram
-
 let step (engine: Engine) : Engine =
-    if willHalt engine then engine
+    let peek () = engine.Stack |> Stack.peek
+    let peekHook () = engine.Stack |> Stack.peekHook
+    let peekAt i = engine.Stack |> Stack.peekAt i
+    let peekAtHook i = engine.Stack |> Stack.peekAtHook i
+
+    let checkForOperation () =
+        let x, pop = peekHook ()
+        match x with
+        | Some(Operation op) ->
+            pop ()
+            Some(op engine)
+
+        | _ -> None
+
+    // Check first if we have a lambda that can be applied to
+    let checkForLambda () =
+        // If you think as if the stack's is the right most element
+        match (peekAt 1, peekAt 0) with
+        | Some(Lambda f), Some(x) ->
+            f engine
+        
+        | _, _ -> None
+
+    // TODO: Use some monads
+
+    match checkForOperation () with
+    | Some(engine') -> engine'
+    | None ->
+
+    match checkForLambda () with
+    | Some(engine') -> engine'
+    | None ->
+
+    // Only check if we should halt after seeing if anything on the stack can be evaluated
+    if isEndOfProgram engine then { engine with IsHalted = true }
     else
 
     let raw = engine.Program.ReadByte()
@@ -34,6 +66,8 @@ let step (engine: Engine) : Engine =
             engine.Stack |> Stack.push (Value(raw))
             engine
         else
-            engine.InstructionSet.[raw].Op engine
+            let op = engine.InstructionSet.[raw].Op
+            engine.Stack |> Stack.push (Operation(op))
+            engine
 
     { engine' with NextReadAddress = engine.NextReadAddress + 1L }

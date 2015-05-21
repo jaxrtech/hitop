@@ -8,22 +8,45 @@ let private make name op =
     { ShortName = name; Op = op }
 
 let private arith2 name f = make name (fun engine ->
-    let stack = engine.Stack
+    let x0 = engine.Stack |> Stack.peekAt 0
+    let x1 = engine.Stack |> Stack.peekAt 1
 
-    if engine |> Engine.willHalt then engine
-    else
-
-    let a = stack |> Stack.peekAt 0
-    let b = stack |> Stack.peekAt 1
-
-    match (a, b) with
-    | Some(Value a), Some(Value b) ->
-        stack |> Stack.dropn 2
-        stack |> Stack.push (Value(f a b))
+    match (x1, x0) with
+    | Some(Value x1), Some(Value x0) ->
+        engine.Stack |> Stack.dropn 2
+        engine.Stack |> Stack.push (Value(f x1 x0))
         engine
 
     | _, _ ->
-        engine // nop
+        let lambda engine =
+            // HACK: Right now we are just assuming the lambda is the 1th item and the arg is the
+            //       0th item on the stack so it looks like:
+            //        ... [lambda@1] [arg@0]
+
+            let x = engine.Stack |> Stack.peekAt 0
+            match x with
+            | Some(Value x) ->
+                // Drop argument `x` and the lambda itself from the stack
+                engine.Stack |> Stack.dropn 2
+
+                let innerlambda engine =
+                    let y = engine.Stack |> Stack.peekAt 0
+                    match y with
+                    | Some(Value y) ->
+                        // Drop argument `y` and the lambda itself from the stack
+                        engine.Stack |> Stack.dropn 2
+                        engine.Stack |> Stack.push (Value(f y x))
+                        Some(engine)
+
+                    | _ -> None
+
+                engine.Stack |> Stack.push (Lambda(innerlambda))
+                Some(engine)
+
+            | _ -> None
+
+        engine.Stack |> Stack.push (Lambda(lambda))
+        engine
 )
 
 module Arithmetic =

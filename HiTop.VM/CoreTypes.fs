@@ -18,12 +18,15 @@ and Instruction = {
     Op: Operation
 }
 
+and Lambda = Engine -> Engine option
+
 and StackElement =
     | Value of byte
     | Operation of Operation
-    | Lambda of Operation
+    | Lambda of Lambda
 
 and Engine = {
+    IsHalted: bool
     NextReadAddress: int64
     InstructionSet: BuiltInstructionSet
     Stack: List<StackElement>
