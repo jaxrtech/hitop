@@ -8,6 +8,15 @@ let private make name op =
     { ShortName = name; Op = op }
 
 let private arith2 name f = make name (fun engine ->
+    // TODO: The wrapping stack operations will not make this work as intended since
+    //       if the stack is a size of 1 when this will return the same `Some(x) `for
+    //       `x0` and `x1` which is not what we want at all.
+    //
+    //       So I guess we need "strict" and "weak" stack operations where the "strict"
+    //       operations are used within the VM itself and then the "weak" stack
+    //       operations are the ones that the bytecode will call.
+    //
+
     let x0 = engine.Stack |> Stack.peekAt 0
     let x1 = engine.Stack |> Stack.peekAt 1
 
@@ -63,6 +72,19 @@ module Arithmetic =
     let ``mod`` = arith2 "mod" (%)
 
     let all =
-        [add; sub; mul; div; ``mod``;]
+        add :: sub :: mul :: div :: ``mod`` :: []
 
-let all = Arithmetic.all
+module Stack =
+    let dup = make "dup" (fun engine ->
+        let x0 = engine.Stack |> Stack.peekAt 0
+        
+        match x0 with
+        | Some(x) ->
+            engine.Stack |> Stack.push x
+            engine
+
+        | _ -> engine)
+
+    let all = dup :: []
+
+let all = Arithmetic.all @ Stack.all

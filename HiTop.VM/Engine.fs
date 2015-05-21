@@ -26,12 +26,12 @@ let step (engine: Engine) : Engine =
     let peekAt i = engine.Stack |> Stack.peekAt i
     let peekAtHook i = engine.Stack |> Stack.peekAtHook i
 
-    let checkForOperation () =
+    let checkForInstruction () =
         let x, pop = peekHook ()
         match x with
-        | Some(Operation op) ->
+        | Some(Instruction x) ->
             pop ()
-            Some(op engine)
+            Some(x.Op engine)
 
         | _ -> None
 
@@ -46,7 +46,7 @@ let step (engine: Engine) : Engine =
 
     // TODO: Use some monads
 
-    match checkForOperation () with
+    match checkForInstruction () with
     | Some(engine') -> engine'
     | None ->
 
@@ -66,8 +66,8 @@ let step (engine: Engine) : Engine =
             engine.Stack |> Stack.push (Value(raw))
             engine
         else
-            let op = engine.InstructionSet.[raw].Op
-            engine.Stack |> Stack.push (Operation(op))
+            let op = engine.InstructionSet.[raw]
+            engine.Stack |> Stack.push (Instruction(op))
             engine
 
     { engine' with NextReadAddress = engine.NextReadAddress + 1L }

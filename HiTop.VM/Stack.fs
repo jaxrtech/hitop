@@ -3,9 +3,7 @@
 open System.Collections.Generic
 open HiTop.VM.CoreTypes
 
-type Stack = IList<StackElement>
-
-let create (): IList<StackElement> =
+let create (): Stack =
     upcast new ResizeArray<StackElement>()
 
 let count (stack: Stack) =

@@ -22,8 +22,10 @@ and Lambda = Engine -> Engine option
 
 and StackElement =
     | Value of byte
-    | Operation of Operation
+    | Instruction of Instruction
     | Lambda of Lambda
+
+and Stack = IList<StackElement>
 
 and Engine = {
     IsHalted: bool
