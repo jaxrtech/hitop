@@ -25,13 +25,13 @@ and StackElement =
     | Instruction of Instruction
     | Lambda of Lambda
 
-and Stack = IList<StackElement>
+and Stack = ResizeArray<StackElement>
 
 and Engine = {
     IsHalted: bool
     NextReadAddress: int64
     InstructionSet: BuiltInstructionSet
-    Stack: List<StackElement>
+    Stack: Stack
     Program: BinaryReader
 }
 

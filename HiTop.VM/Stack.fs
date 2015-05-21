@@ -1,10 +1,15 @@
 ﻿module HiTop.VM.Stack
 
-open System.Collections.Generic
 open HiTop.VM.CoreTypes
 
+type StackOperationBaseSet = {
+    peekAt: int -> Stack -> StackElement option
+    dropAt: int -> Stack -> unit
+    pushAt: int -> StackElement -> Stack -> unit
+}
+
 let create (): Stack =
-    upcast new ResizeArray<StackElement>()
+    new ResizeArray<StackElement>()
 
 let count (stack: Stack) =
     stack.Count
@@ -15,6 +20,88 @@ let isEmpty (stack: Stack) =
 let notEmpty (stack: Stack) =
     stack |> isEmpty |> not
 
+module private DerivedOperations =
+    let peek (ops: StackOperationBaseSet) (stack: Stack) =
+        stack |> ops.peekAt 0
+
+
+    let dropn (ops: StackOperationBaseSet) (n: int) (stack: Stack) =
+        let n' = match stack.Count with
+                 | count when n <= 0     -> 0
+                 | count when n >= count -> count
+                 | _ -> n
+
+        let rec f = function
+        | 0 -> ()
+        | n ->
+            stack |> ops.dropAt 0
+            f (n - 1)
+    
+        match n' with
+        | 0 -> ()
+        | _ -> f n
+
+    let drop (ops: StackOperationBaseSet) (stack: Stack) =
+        stack |> dropn ops 1
+
+    let popAt (ops: StackOperationBaseSet) (i: int) (stack: Stack) =
+        stack 
+        |> ops.peekAt i
+        |> Option.map (fun x ->
+            stack |> ops.dropAt i
+            x)
+
+    let pop (ops: StackOperationBaseSet) (stack: Stack) =
+        stack |> popAt ops 0
+
+    let push (ops: StackOperationBaseSet) (element: StackElement) (stack: Stack) =
+        stack |> ops.pushAt 0 element
+
+    let peekAtHook (ops: StackOperationBaseSet) (i: int) (stack: Stack) =
+        // NOTE: There is no way to check that the `peekAt` and `popAt` will return the save value since
+        //       since `StackElement` does not have structural equality
+
+        (stack |> ops.peekAt i,
+         fun () -> stack |> popAt ops i |> ignore)
+
+    let peekHook (ops: StackOperationBaseSet) (stack: Stack) =
+        stack |> peekAtHook ops 0
+
+
+type StackOperations = {
+    peek: Stack -> StackElement option
+    peekAt: int -> Stack -> StackElement option
+    peekAtHook: int -> Stack -> StackElement option * (unit -> unit)
+    peekHook: Stack -> StackElement option * (unit -> unit)
+    
+    drop: Stack -> unit
+    dropn: int -> Stack -> unit
+    dropAt: int -> Stack -> unit
+    
+    push: StackElement -> Stack -> unit
+    pushAt: int -> StackElement -> Stack -> unit
+    
+    pop: Stack -> StackElement option
+    popAt: int -> Stack -> StackElement option
+
+}
+
+let buildOperations (ops: StackOperationBaseSet) =
+    { peekAt = ops.peekAt
+      dropAt = ops.dropAt
+      pushAt = ops.pushAt
+      
+      peek = DerivedOperations.peek ops
+      dropn = DerivedOperations.dropn ops
+      drop = DerivedOperations.drop ops
+      popAt = DerivedOperations.popAt ops
+      pop = DerivedOperations.pop ops
+      push = DerivedOperations.push ops
+      peekAtHook = DerivedOperations.peekAtHook ops
+      peekHook = DerivedOperations.peekHook ops }
+
+//
+
 let private indexFromPos (pos: int) (stack: Stack) =
     assert (stack.Count >= 0)
 
@@ -22,77 +109,84 @@ let private indexFromPos (pos: int) (stack: Stack) =
     | 0 -> 0
     | _ -> (stack.Count - 1) - pos
 
-let peekAt (i: int) (stack: Stack) =
-    if notEmpty stack then
-        let pos = i % stack.Count
-        let i' = stack |> indexFromPos pos
-        Some (stack.[i'])
-    else
-        None
+let WrappedStack =
+    let peekAt (i: int) (stack: Stack) =
+        if notEmpty stack then
+            let pos = i % stack.Count
+            let i' = stack |> indexFromPos pos
+            Some (stack.[i'])
+        else
+            None
 
-let peek (stack: Stack) =
-    stack |> peekAt 0
+    let dropAt (i: int) (stack: Stack) =
+        if notEmpty stack then
+            let pos = i % stack.Count
+            let i' = stack |> indexFromPos pos
+            stack.RemoveAt(i')
+        else
+            ()
 
-let dropAt (i: int) (stack: Stack) =
-    let pos = i % stack.Count
-    let i' = stack |> indexFromPos pos
-    stack.RemoveAt(i')
+    let pushAt (i: int) (element: StackElement) (stack: Stack) =
+        assert (stack.Count >= 0)
+
+        // This prevents `i % 0` which would result in a DivideByZeroException
+        let pos = match stack.Count with
+                  | 0 -> 0
+                  | n -> i % n
+
+        let i' =
+            // Make sure the displaced element ends up on the right not the lefts
+            let x = stack |> indexFromPos pos
+            match stack.Count with
+            | 0 -> 0
+            | _ -> x + 1
+
+        stack.Insert(i', element)
+
+    let operations = {
+        StackOperationBaseSet.peekAt = peekAt
+        dropAt = dropAt
+        pushAt = pushAt
+    }
+
+    buildOperations operations
+
+let StrictStack =
+    let peekAt (i: int) (stack: Stack) =
+        if notEmpty stack && i >= 0 && i < stack.Count then
+            let i' = stack |> indexFromPos i
+            Some (stack.[i'])
+        else
+            None
+
+    let dropAt (i: int) (stack: Stack) =
+        if notEmpty stack && i >= 0 && i < stack.Count then
+            let i' = stack |> indexFromPos i
+            stack.RemoveAt(i')
+        else
+            ()
+
+    let pushAt (i: int) (element: StackElement) (stack: Stack) =
+        assert (stack.Count >= 0)
+        
+        if i >= 0 && i < stack.Count then
+            let i' =
+                // Make sure the displaced element ends up on the right not the lefts
+                let x = stack |> indexFromPos i
+                match stack.Count with
+                | 0 -> 0
+                | _ -> x + 1
+
+            stack.Insert(i', element)
+        else
+            ()
+
+    let operations = {
+        StackOperationBaseSet.peekAt = peekAt
+        dropAt = dropAt
+        pushAt = pushAt
+    }
+
+    buildOperations operations
     
-let dropn (n: int) (stack: Stack) =
-    let n' = match stack.Count with
-             | count when n <= 0     -> 0
-             | count when n >= count -> count
-             | _ -> n
-
-    let rec f = function
-    | 0 -> ()
-    | n ->
-        stack |> dropAt 0
-        f (n - 1)
     
-    match n' with
-    | 0 -> ()
-    | _ -> f n
-
-let drop (stack: Stack) =
-    stack |> dropn 1
-
-let popAt (i: int) (stack: Stack) =
-    stack 
-    |> peekAt i
-    |> Option.map (fun x ->
-        stack |> dropAt i
-        x)
-
-let pop (stack: Stack) =
-    stack |> popAt 0
-
-let pushAt (i: int) (element: StackElement) (stack: Stack) =
-    assert (stack.Count >= 0)
-
-    // This prevents `i % 0` which would result in a DivideByZeroException
-    let pos = match stack.Count with
-              | 0 -> 0
-              | n -> i % n
-
-    let i' =
-        // Make sure the displaced element ends up on the right not the lefts
-        let x = stack |> indexFromPos pos
-        match stack.Count with
-        | 0 -> 0
-        | _ -> x + 1
-
-    stack.Insert(i', element)
-
-let push (element: StackElement) (stack: Stack) =
-    stack |> pushAt 0 element
-
-let peekAtHook (i: int) (stack: Stack) =
-    // NOTE: There is no way to check that the `peekAt` and `popAt` will return the save value since
-    //       since `StackElement` does not have structural equality
-
-    (stack |> peekAt i,
-     fun () -> stack |> popAt i |> ignore)
-
-let peekHook (stack: Stack) =
-    stack |> peekAtHook 0

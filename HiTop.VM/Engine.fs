@@ -1,14 +1,14 @@
 ﻿module HiTop.VM.Engine
 
-open System.Collections.Generic
 open System.IO
 open HiTop.VM.CoreTypes
+open HiTop.VM.Stack
 
 let createFromStream stream instructionSet =
     { IsHalted = false
       NextReadAddress = 0L
       InstructionSet = instructionSet
-      Stack = List<StackElement>()
+      Stack = Stack.create ()
       Program = new BinaryReader(stream) }
 
 let createFromBuffer (buffer: byte array) instructionSet =
@@ -21,10 +21,10 @@ let isEndOfProgram (engine: Engine) : bool =
     engine.NextReadAddress = engine.Program.BaseStream.Length
 
 let step (engine: Engine) : Engine =
-    let peek () = engine.Stack |> Stack.peek
-    let peekHook () = engine.Stack |> Stack.peekHook
-    let peekAt i = engine.Stack |> Stack.peekAt i
-    let peekAtHook i = engine.Stack |> Stack.peekAtHook i
+    let peek () = engine.Stack |> StrictStack.peek
+    let peekHook () = engine.Stack |> StrictStack.peekHook
+    let peekAt i = engine.Stack |> StrictStack.peekAt i
+    let peekAtHook i = engine.Stack |> StrictStack.peekAtHook i
 
     let checkForInstruction () =
         let x, pop = peekHook ()
@@ -63,11 +63,11 @@ let step (engine: Engine) : Engine =
     // If the byte is not assigned, it is a raw encoded byte
     let engine' =
         if not (engine.InstructionSet.ContainsKey(raw)) then
-            engine.Stack |> Stack.push (Value(raw))
+            engine.Stack |> WrappedStack.push (Value(raw))
             engine
         else
             let op = engine.InstructionSet.[raw]
-            engine.Stack |> Stack.push (Instruction(op))
+            engine.Stack |> WrappedStack.push (Instruction(op))
             engine
 
     { engine' with NextReadAddress = engine.NextReadAddress + 1L }
