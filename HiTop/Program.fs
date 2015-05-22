@@ -15,10 +15,11 @@ let step (i, engine) =
 
     let printStackIfRunning i engine =
         // Only print the state out again if we are not halted
-        if not engine.IsHalted then
-            printStack i engine
-        else
+        if engine.IsHalted then
+            printfn "     >> Done"
             i
+        else
+            printStack i engine
 
     let evalPrintWrapper f =
         match i with
@@ -75,7 +76,5 @@ let main argv =
     let engine = Engine.createFromBuffer bytecode instructionSet
     eval engine |> ignore
         
-    printfn "   > Done"
     System.Console.ReadLine() |> ignore
-
     0
