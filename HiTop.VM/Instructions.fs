@@ -188,4 +188,6 @@ module Comparison =
     /// Greater than
     let cge = ``2->1:bool`` "cge" (>=)
 
-let all = Arithmetic.all @ Stack.all @ Output.all
+    let all = cez :: cnz :: ceq :: clt :: cle :: cgt :: cge :: []
+
+let all = Arithmetic.all @ Stack.all @ Output.all @ Comparison.all
