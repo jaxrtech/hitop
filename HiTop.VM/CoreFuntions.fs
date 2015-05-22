@@ -44,3 +44,10 @@ module Stack =
         |> Seq.map StackElement.toString
         |> String.concat ", "
         |> fun x -> "[" + x + "]"
+
+module Output =
+    let appendTo (buffer: byte array) (output: Output option) =
+        match output with
+        | Some(Byte(x)) -> [| x |] |> Array.append buffer
+        | Some(Buffer(x)) -> x |> Array.append buffer
+        | None -> buffer
