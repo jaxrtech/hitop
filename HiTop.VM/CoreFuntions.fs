@@ -17,6 +17,10 @@ module StackElement =
         | Value(x), Some(Value(y)) -> x = y
         | _ -> false
 
+    let boolAsValue = function
+    | false -> Value(0uy)
+    | true -> Value(1uy)
+
     let rec toString = function
     | Value x -> sprintf "%d" x
     | Instruction(x) -> sprintf "[%s]" x.ShortName
