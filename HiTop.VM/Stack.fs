@@ -152,15 +152,18 @@ let WrappedStack =
     buildOperations operations
 
 let StrictStack =
+    let isIndexInBounds (stack: Stack) (i: int) =
+        i = 0 || (i > 0 && i < stack.Count)
+
     let peekAt (i: int) (stack: Stack) =
-        if notEmpty stack && i >= 0 && i < stack.Count then
+        if notEmpty stack && i |> isIndexInBounds stack then
             let i' = stack |> indexFromPos i
             Some (stack.[i'])
         else
             None
 
     let dropAt (i: int) (stack: Stack) =
-        if notEmpty stack && i >= 0 && i < stack.Count then
+        if notEmpty stack && i |> isIndexInBounds stack then
             let i' = stack |> indexFromPos i
             stack.RemoveAt(i')
         else
@@ -169,7 +172,7 @@ let StrictStack =
     let pushAt (i: int) (element: StackElement) (stack: Stack) =
         assert (stack.Count >= 0)
         
-        if i >= 0 && i < stack.Count then
+        if i |> isIndexInBounds stack then
             let i' =
                 // Make sure the displaced element ends up on the right not the lefts
                 let x = stack |> indexFromPos i
