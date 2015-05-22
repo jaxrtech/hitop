@@ -6,7 +6,21 @@ module LambdaArg =
     | Placeholder -> true
     | _ -> false
 
+    let padding (n: int) =
+        Array.create n Placeholder
+
+    let padTo (n: int) (args: LambdaArg array) =
+        assert (args.Length <= n)
+        
+        Array.append
+            args
+            (Array.create (n - args.Length) Placeholder)
+
 module StackElement =
+    let isValue = function
+    | Value _ -> true
+    | _ -> false
+
     let equalAsValue (a: StackElement) (b: StackElement) =
         match (a, b) with
         | Value(x), Value(y) -> x = y
@@ -28,18 +42,18 @@ module StackElement =
         let named = sprintf "λ[%s]"
 
         match x.Args with
-        | args when args |> List.forall LambdaArg.isPlaceholder ->
+        | args when args |> Array.forall LambdaArg.isPlaceholder ->
             named x.ShortName
         
         | args ->
             args
-            |> List.map (function
+            |> Array.map (function
                    | Placeholder -> "?"
                    | StackElement x -> toString x)
             |> String.concat " "
             |> sprintf "λ[%s]"
 
-        | [] ->
+        | [||] ->
             named x.ShortName
 
 module Stack =

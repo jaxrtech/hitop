@@ -27,7 +27,7 @@ and LambdaArg =
 
 and LambdaState = {
     ShortName: string
-    Args: LambdaArg list
+    Args: LambdaArg array
     Lambda: Lambda
 }
 

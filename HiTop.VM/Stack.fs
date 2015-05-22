@@ -57,6 +57,15 @@ module private DerivedOperations =
     let push (ops: StackOperationBaseSet) (element: StackElement) (stack: Stack) =
         stack |> ops.pushAt 0 element
 
+    /// Peeks at the top `n` elements on the stack returning a list in ascending index order so that
+    /// is would look like `[peekAt 0, peekAt 1, ..., peekAt n-1]`.
+    ///
+    /// If the stack has less then `n` elements, then only the maximum number of element is returned
+    let peekn (ops: StackOperationBaseSet) (n: int) (stack: Stack) =
+        {0..n-1}
+        |> Seq.map (fun i -> stack |> ops.peekAt i)
+        |> Seq.choose id // filter out `None` by choosing only `Some(x)`
+
     let peekAtHook (ops: StackOperationBaseSet) (i: int) (stack: Stack) =
         // NOTE: There is no way to check that the `peekAt` and `popAt` will return the save value since
         //       since `StackElement` does not have structural equality
@@ -67,9 +76,9 @@ module private DerivedOperations =
     let peekHook (ops: StackOperationBaseSet) (stack: Stack) =
         stack |> peekAtHook ops 0
 
-
 type StackOperations = {
     peek: Stack -> StackElement option
+    peekn: int -> Stack -> seq<StackElement>
     peekAt: int -> Stack -> StackElement option
     peekAtHook: int -> Stack -> StackElement option * (unit -> unit)
     peekHook: Stack -> StackElement option * (unit -> unit)
@@ -97,6 +106,7 @@ let buildOperations (ops: StackOperationBaseSet) =
       popAt = DerivedOperations.popAt ops
       pop = DerivedOperations.pop ops
       push = DerivedOperations.push ops
+      peekn = DerivedOperations.peekn ops
       peekAtHook = DerivedOperations.peekAtHook ops
       peekHook = DerivedOperations.peekHook ops }
 
