@@ -3,33 +3,51 @@
 open HiTop.VM
 open HiTop.VM.InstructionSet
 
-let eval engine : Engine =
-    let rec f i (engine: Engine) =
-        let printStack i =
-            printfn "[%d]> %s" i (Stack.toString engine.Stack)
-            i + 1
+type StepResult =
+     | Halted of Engine
+     | Stepped of int * Engine
 
-        let evalPrintWrapper f =
-            match i with
-            | 0 ->
-                let i = printStack i
-                let x = f ()
-                let i = printStack i
-                (x, i)
-            | _ ->
-                let x = f ()
-                let i = printStack i
-                (x, i)
+let step (i, engine) =
+    let printStack i engine =
+        printfn "[%d] S> %s" i (Stack.toString engine.Stack)
+        printfn "[%d] D> %A" i engine.LastOutput
+        i + 1
 
-        let step () = engine |> Engine.step
-        let engine', i' = evalPrintWrapper step
+    let evalPrintWrapper f =
+        match i with
+        | 0 ->
+            let i = printStack i engine
+            let engine' = f ()
+            let i = printStack i engine'
+            (engine', i)
+        | _ ->
+            let engine' = f ()
+            let i = printStack i engine'
+            (engine', i)
 
-        if engine'.IsHalted then
-            engine'
-        else
-            f i' engine'
+    let step () = engine |> Engine.step
+    let engine', i' = evalPrintWrapper step
 
-    f 0 engine
+    if engine'.IsHalted then
+        Halted(engine')
+    else
+        Stepped(i', engine')
+
+let eval engine =
+    let rec f buffer engine result =
+        let appendToBuffer output =
+             output |> Output.appendTo buffer
+
+        match result with
+        | Halted engine' ->
+            let buffer' = appendToBuffer engine'.LastOutput
+            (engine', buffer')
+
+        | Stepped(i, engine') ->
+            let buffer' = appendToBuffer engine'.LastOutput
+            f buffer' engine' (step (i, engine'))
+
+    f (Array.zeroCreate<byte> 0) engine (step (0, engine))
 
 [<EntryPoint>]
 let main argv = 
@@ -40,14 +58,15 @@ let main argv =
             failwith "error: too many instructions in instruction set. number of instructions exceeds 256."
         | Success x -> x
 
-    let random = new System.Random()
-    let buffer = Array.zeroCreate 50
-    random.NextBytes(buffer)
+    let bytecode =
+        let random = new System.Random()
+        let x = Array.zeroCreate 25
+        random.NextBytes(x)
+        x
 
-    let engine = Engine.createFromBuffer buffer instructionSet
-    
+    let engine = Engine.createFromBuffer bytecode instructionSet
     eval engine |> ignore
-
+        
     printfn "   > Done"
     System.Console.ReadLine() |> ignore
 
