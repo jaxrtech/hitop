@@ -10,11 +10,11 @@ open HiTop.VM.Stack
 let random = new Random()
 
 let shouldEqualAsValue x y =
-    equalAsOptValue (Value(x)) y
+    StackElement.equalAsOptValue (Value(x)) y
     |> should be True
 
 let shouldNotEqualAsValue x y =
-    equalAsOptValue (Value(x)) y
+    StackElement.equalAsOptValue (Value(x)) y
     |> should be False
 
 let nextRandomByte () =
@@ -111,7 +111,7 @@ let ``when pushed and poped should be in the correct order.`` () =
     let popShouldEqual x =
         s
         |> WrappedStack.pop
-        |> equalAsOptValue (Value(x))
+        |> StackElement.equalAsOptValue (Value(x))
         |> should be True
 
     [1uy; 2uy; 3uy]

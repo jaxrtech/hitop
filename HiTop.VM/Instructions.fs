@@ -24,7 +24,7 @@ let private arith2 name f = make name (fun engine ->
 
             let x = engine.Stack |> StrictStack.peekAt 0
             match x with
-            | Some(Value x) ->
+            | Some(Value x as a) ->
                 // Drop argument `x` and the lambda itself from the stack
                 engine.Stack |> StrictStack.dropn 2
 
@@ -39,12 +39,22 @@ let private arith2 name f = make name (fun engine ->
 
                     | _ -> None
 
-                engine.Stack |> StrictStack.push (Lambda(innerlambda))
+                let state = 
+                    { ShortName = name
+                      Args = [StackElement(a); Placeholder]
+                      Lambda = innerlambda }
+
+                engine.Stack |> StrictStack.push (Lambda(state))
                 Some(engine)
 
             | _ -> None
 
-        engine.Stack |> StrictStack.push (Lambda(lambda))
+        let state = 
+            { ShortName = name
+              Args = [Placeholder; Placeholder]
+              Lambda = lambda }
+
+        engine.Stack |> StrictStack.push (Lambda(state))
         engine
 )
 
@@ -66,7 +76,7 @@ module Arithmetic =
 
 module Stack =
     let dup = make "dup" (fun engine ->
-        let x0 = engine.Stack |> StrictStack.peekAt 0
+        let x0 = engine.Stack |> StrictStack.peek
         
         match x0 with
         | Some(x) ->
@@ -77,4 +87,59 @@ module Stack =
 
     let all = dup :: []
 
-let all = Arithmetic.all @ Stack.all
+module Output =
+    let private output name onNormalResult onLambdaResult = make name (fun engine ->
+        let x0 = engine.Stack |> StrictStack.peek
+        
+        let f x =
+            { engine with LastOutput = Some(Byte(x)) }
+
+        match x0 with
+        | Some(Value x) ->
+            onNormalResult engine
+            f x
+
+        | _ ->
+            let lambda engine =
+                // HACK: Right now we are just assuming the lambda is the 1th item and the arg is the
+                //       0th item on the stack so it looks like:
+                //        ... [lambda@1] [arg@0]
+
+                let x = engine.Stack |> StrictStack.peek
+                match x with
+                | Some(Value x) ->
+                    onLambdaResult engine
+                    Some(f x)
+
+                | _ -> None
+
+            let state = 
+                { ShortName = name
+                  Args = [Placeholder]
+                  Lambda = lambda }
+
+            engine.Stack |> StrictStack.push (Lambda(state))
+            engine)
+
+    /// Instruction that reads a value `x` and then outputs it without dropping `x` from the stack
+    let out = output "out"
+                (fun _ -> 
+                    // Leave input on the stack during normal execution
+                    ())
+
+                (fun engine ->
+                    // Drop only the lambda itself from the stack and not arg `x`
+                    engine.Stack |> StrictStack.dropAt 1)
+
+    let put = output "put"
+                (fun engine ->
+                    // Drop the input during normal execution
+                    engine.Stack |> StrictStack.drop)
+
+                (fun engine ->
+                    // Drop argument `x` and the lambda itself from the stack
+                    engine.Stack |> StrictStack.dropn 2)
+
+    let all = out :: put :: []
+
+let all = Arithmetic.all @ Stack.all @ Output.all

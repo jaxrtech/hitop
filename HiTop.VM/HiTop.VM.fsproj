@@ -43,6 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CoreTypes.fs" />
+    <Compile Include="CoreFuntions.fs" />
     <Compile Include="Stack.fs" />
     <Compile Include="Engine.fs" />
     <Compile Include="Instructions.fs" />

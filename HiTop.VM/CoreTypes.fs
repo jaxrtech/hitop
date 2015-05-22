@@ -1,4 +1,5 @@
-﻿module HiTop.VM.CoreTypes
+﻿[<AutoOpen>]
+module HiTop.VM.CoreTypes
 
 open System.Collections.Generic
 open System.IO
@@ -20,27 +21,34 @@ and Instruction = {
 
 and Lambda = Engine -> Engine option
 
+and LambdaArg =
+    | StackElement of StackElement
+    | Placeholder
+
+and LambdaState = {
+    ShortName: string
+    Args: LambdaArg list
+    Lambda: Lambda
+}
+
 and StackElement =
     | Value of byte
     | Instruction of Instruction
-    | Lambda of Lambda
+    | Lambda of LambdaState
 
 and Stack = ResizeArray<StackElement>
 
+and Output =
+    | Byte of byte
+    | Buffer of byte array
+
 and Engine = {
     IsHalted: bool
+    Cycles: uint64
     NextReadAddress: int64
     InstructionSet: BuiltInstructionSet
     Stack: Stack
     Program: BinaryReader
+    LastOutput: Output option
 }
 
-let equalAsValue (a: StackElement) (b: StackElement) =
-    match (a, b) with
-    | Value(x), Value(y) -> x = y
-    | _ -> false
-
-let equalAsOptValue (a: StackElement) (b: StackElement option) =
-    match (a, b) with
-    | Value(x), Some(Value(y)) -> x = y
-    | _ -> false

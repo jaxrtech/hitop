@@ -1,36 +1,12 @@
 ﻿module HiTop.Program
 
 open HiTop.VM
-open HiTop.VM.CoreTypes
 open HiTop.VM.InstructionSet
-
-let stackElementToString = function
-    | Value(x) -> sprintf "%d" x
-    | Instruction(x) -> sprintf "[%s]" x.ShortName
-    | Lambda(x) -> sprintf "%A" x
-
-let stackToString (stack: Stack) =
-    match stack.Count with
-    | 0 -> "[]"
-    | _ ->
-
-    let elements = stack |> Seq.map stackElementToString
-    
-    let n = elements |> Seq.length
-
-    elements
-    |> Seq.fold (fun (acc, i) x ->
-            match i with
-            | 0 ->
-                (sprintf "%s" x, i + 1)
-            | i ->
-                (sprintf "%s, %s" acc x, i + 1)) ("", 0)
-    |> fst
 
 let eval engine : Engine =
     let rec f i (engine: Engine) =
         let printStack i =
-            printfn "[%d]> %s" i (stackToString engine.Stack)
+            printfn "[%d]> %s" i (Stack.toString engine.Stack)
             i + 1
 
         let evalPrintWrapper f =
