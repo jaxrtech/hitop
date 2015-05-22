@@ -40,7 +40,8 @@ let private ``1->1`` name f =
         engine
 
     ``1->1 (raw)`` name
-        (fun engine x -> x |> resultOf engine)
+        (fun engine x ->
+            x |> resultOf engine)
 
         (fun engine x ->
             engine.Stack |> StrictStack.dropn 2
