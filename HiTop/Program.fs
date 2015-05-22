@@ -13,17 +13,25 @@ let step (i, engine) =
         printfn "[%d] D> %A" i engine.LastOutput
         i + 1
 
+    let printStackIfRunning i engine =
+        // Only print the state out again if we are not halted
+        if not engine.IsHalted then
+            printStack i engine
+        else
+            i
+
     let evalPrintWrapper f =
         match i with
         | 0 ->
             let i = printStack i engine
             let engine' = f ()
-            let i = printStack i engine'
-            (engine', i)
+            let i' = printStackIfRunning i engine
+            (engine', i')
+
         | _ ->
             let engine' = f ()
-            let i = printStack i engine'
-            (engine', i)
+            let i' = printStackIfRunning i engine'
+            (engine', i')
 
     let step () = engine |> Engine.step
     let engine', i' = evalPrintWrapper step
