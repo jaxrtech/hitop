@@ -6,14 +6,13 @@ open HiTop.VM.Stack
 let private make name op =
     { ShortName = name; Op = op }
 
-let buildLambda name engine n f =
+let buildLambdaFromPartial name engine n f lambdaArgs resultArgs =
     let finalLambda engine resultArgs =
         assert ((resultArgs |> Array.length) = n)
 
         // Drop argument `y` and the lambda itself from the stack
         engine.Stack |> StrictStack.dropn 2
         f engine resultArgs
-
 
     let rec rootLambda engine lambdaArgs resultArgs =
                  
@@ -56,12 +55,15 @@ let buildLambda name engine n f =
             pushLambda engine.Stack lambdaArgs lambda
             Some(engine))
 
-    rootLambda engine (Array.empty) (Array.empty)
+    rootLambda engine lambdaArgs resultArgs
+
+let buildLambdaFromEmpty name engine n f =
+    buildLambdaFromPartial name engine n f (Array.empty) (Array.empty)
 
 let buildLambdaState name engine size f = 
     { ShortName = name
       Args = LambdaArg.padding size
-      Lambda = buildLambda name engine size f }
+      Lambda = buildLambdaFromEmpty name engine size f }
 
 let private ``1->1 (raw)`` name onNormal onLambda = make name (fun engine ->
     let x0 = engine.Stack |> StrictStack.peek
@@ -106,23 +108,53 @@ let private ``1->1`` name f =
 
 // TODO: Generalize on the number of arguments
 
-let private ``2->1`` name f = make name (fun engine ->
-    let size = 2
-    let x0 = engine.Stack |> StrictStack.peekAt 0
-    let x1 = engine.Stack |> StrictStack.peekAt 1
+type ArgumentSpec<'a> = {
+    Count: int
+    selector: StackElement -> bool
+    unwrapper: StackElement -> 'a option
+}
+
+let private readStackArgs stack argumentSpec =
+    let elements = 
+        stack
+        |> StrictStack.peekn argumentSpec.Count
+
+           // Only keep taking arguments while they are of the selected element type
+        |> Seq.takeWhile argumentSpec.selector
+        |> Seq.toList
+
+    let args =
+        elements
+           // Unwrap to list of bytes
+        |> List.choose argumentSpec.unwrapper
+        |> List.toArray
+
+    assert (List.length elements = Array.length args)
+
+    let n = List.length elements
+    (n, elements, args)
+
+let private ``n->1`` name argumentSpec f = make name (fun engine ->
+    let x = engine.Stack |> StrictStack.peekn argumentSpec.Count
 
     let g engine args =
-        assert (Array.length args = size)
-        engine.Stack |> StrictStack.push (f args.[0] args.[1])
+        assert (Array.length args = argumentSpec.Count)
+        engine.Stack |> StrictStack.push (f args)
         engine
 
-    match (x1, x0) with
-    | Some(Value x1), Some(Value x0) ->
-        engine.Stack |> StrictStack.dropn size
-        g engine [| x0; x1; |]
+    let argsCount, lambdaArgs, resultArgs = readStackArgs engine.Stack argumentSpec
 
-    | _, _ ->
-        let state = buildLambdaState name engine size g
+    match lambdaArgs with
+    | args when argsCount = argumentSpec.Count ->
+        engine.Stack |> StrictStack.dropn argumentSpec.Count
+        g engine resultArgs
+
+    | args when argsCount < argumentSpec.Count ->
+        engine.Stack |> StrictStack.dropn argsCount
+        let start = buil
+
+    | args -> // when List.length args = 0 
+        let state = buildLambdaState name engine argumentSpec.Count g
         engine.Stack |> StrictStack.push (Lambda(state))
         engine)
 
