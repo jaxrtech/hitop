@@ -1,4 +1,4 @@
-﻿module HiTop.Program
+﻿module HiTop.VM.Runner.Program
 
 open HiTop.VM
 open HiTop.VM.InstructionSet
