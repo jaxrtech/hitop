@@ -8,39 +8,34 @@ type Result<'TSuccess,'TFailure> =
      | Success of 'TSuccess
      | Failure of 'TFailure
 
-type UnbuiltInstructionSet = Instruction list
+type UnbuiltInstructionSet = ByteCode list
 
-and BuiltInstructionSet = IReadOnlyDictionary<byte, Instruction>
+and BuiltInstructionSet = IReadOnlyDictionary<byte, ByteCode>
 
-and Operation = Engine -> Engine
+and Operation = Engine -> Engine option
+
+and ByteCode =
+    | Instruction of Instruction
+    | EncodedByteMarker
 
 and Instruction = {
     ShortName: string;
     Op: Operation
 }
 
-and Lambda = Engine -> Engine option
-
-and LambdaArg =
-    | StackElement of StackElement
-    | Placeholder
-
-and LambdaState = {
-    ShortName: string
-    Args: LambdaArg array
-    Lambda: Lambda
-}
-
-and StackElement =
-    | Value of byte
-    | Instruction of Instruction
-    | Lambda of LambdaState
+and StackElement = byte
 
 and Stack = ResizeArray<StackElement>
 
 and Output =
     | Byte of byte
     | Buffer of byte array
+
+and LastOperation =
+    | PushedUnencodedByte of byte
+    | PushedEncodedByte of byte
+    | ExecutedOperation of string
+    | PushedFailedOperation of string
 
 and Engine = {
     IsHalted: bool
@@ -50,5 +45,6 @@ and Engine = {
     Stack: Stack
     Program: BinaryReader
     LastOutput: Output option
+    LastOperation: LastOperation option
 }
 

@@ -9,7 +9,7 @@ type StepResult =
 
 let step (i, engine) =
     let printStack i engine =
-        printfn "[%d] S> %s" i (Stack.toString engine.Stack)
+        printfn "[%d] S> %s | [%A]" i (Stack.toString engine.Stack) (engine.LastOperation)
         printfn "[%d] D> %A" i engine.LastOutput
         i + 1
 
@@ -26,7 +26,7 @@ let step (i, engine) =
         | 0 ->
             let i = printStack i engine
             let engine' = f ()
-            let i' = printStackIfRunning i engine
+            let i' = printStackIfRunning i engine'
             (engine', i')
 
         | _ ->
@@ -69,9 +69,19 @@ let main argv =
 
     let bytecode =
         let random = new System.Random()
-        let x = Array.zeroCreate 25
-        random.NextBytes(x)
-        x
+
+        let nextByte () =
+            // Try to even out the distribution of bytes and operations generated
+            match random.NextDouble() with
+            | x when x < 0.40 -> // 40% of the time: generate a raw byte
+                let n = random.Next(0, System.Byte.MaxValue |> int)
+                n |> byte
+                
+            | x -> // 60% of the time: generate an operation
+                let i = random.Next(0, instructionSet.Count)
+                Seq.nth i instructionSet.Keys
+        
+        Array.init 25 (fun _ -> nextByte ())
 
     let engine = Engine.createFromBuffer bytecode instructionSet
     eval engine |> ignore
