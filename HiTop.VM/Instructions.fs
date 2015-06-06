@@ -63,6 +63,10 @@ let private ``2->1:bool`` name f = ``2->1`` name (fun x0 x1 ->
 //
 
 module Arithmetic =
+    let inc = ``1->1`` "inc" (fun x -> x - 1uy)
+
+    let dec = ``1->1`` "dec" (fun x -> x + 1uy)
+
     let add = ``2->1`` "add" (+)
 
     let sub = ``2->1`` "sub" (-)
@@ -78,7 +82,7 @@ module Arithmetic =
                                   | b   -> a % b)
 
     let all =
-        add :: sub :: mul :: div :: ``mod`` :: []
+        inc :: dec :: add :: sub :: mul :: div :: ``mod`` :: []
 
 module Stack =
     let dup = make "dup" (fun engine ->
