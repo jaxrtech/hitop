@@ -143,3 +143,14 @@ module Jumps =
     // TODO: Brainf**k style conditionals
 
 let all = EncodedByteMarker :: Arithmetic.all @ Stack.all @ Output.all @ Comparison.all
+
+// At startup, run check to ensure all the short names are unique
+let private uniqueCount =
+    all
+    |> List.choose (function
+        | Instruction ins -> ins.ShortName |> Some
+        | EncodedByteMarker as x -> sprintf "%A" x |> Some)
+    |> Seq.distinct
+    |> Seq.length
+
+assert (all.Length = uniqueCount)
