@@ -4,37 +4,36 @@ module HiTop.VM.CoreTypes
 open System.Collections.Generic
 open System.IO
 
+[<AutoOpen>]
+module Literals =
+    [<Literal>]
+    let hitop_false = 0uy
+
+    [<Literal>]
+    let hitop_true = 1uy
+
 type Result<'TSuccess,'TFailure> = 
      | Success of 'TSuccess
      | Failure of 'TFailure
 
-type UnbuiltInstructionSet = Instruction list
+type UnbuiltInstructionSet = ByteCode list
 
-and BuiltInstructionSet = IReadOnlyDictionary<byte, Instruction>
+and BuiltInstructionSet = IReadOnlyDictionary<byte, ByteCode>
 
-and Operation = Engine -> Engine
+and Operation = Engine -> Engine option
+
+and ByteCode =
+    | Instruction of Instruction
+    | EncodedByteMarker
+    | LoopBeginMarker
+    | LoopEndMarker
 
 and Instruction = {
     ShortName: string;
     Op: Operation
 }
 
-and Lambda = Engine -> Engine option
-
-and LambdaArg =
-    | StackElement of StackElement
-    | Placeholder
-
-and LambdaState = {
-    ShortName: string
-    Args: LambdaArg array
-    Lambda: Lambda
-}
-
-and StackElement =
-    | Value of byte
-    | Instruction of Instruction
-    | Lambda of LambdaState
+and StackElement = byte
 
 and Stack = ResizeArray<StackElement>
 
@@ -42,13 +41,23 @@ and Output =
     | Byte of byte
     | Buffer of byte array
 
+and StepResult =
+    | PushedUnencodedByte of byte
+    | PushedEncodedByte of byte
+    | ExecutedOperation of string
+    | PushedFailedOperation of string
+    | ContinuedAfterLoopBeginMarker
+    | ContinuedAfterLoopEndMarker
+    | JumpedToLoopBeginMarker
+    | JumpedToLoopEndMarker
+
 and Engine = {
     IsHalted: bool
     Cycles: uint64
-    NextReadAddress: int64
     InstructionSet: BuiltInstructionSet
     Stack: Stack
     Program: BinaryReader
     LastOutput: Output option
+    LastOperation: StepResult option
 }
 

@@ -8,11 +8,11 @@
     <ProjectGuid>db6f2e32-4c5d-467a-85e7-47c583c46009</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>HiTop</RootNamespace>
-    <AssemblyName>HiTop</AssemblyName>
+    <AssemblyName>HiTop.VM.Runner</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
-    <Name>HiTop</Name>
+    <Name>HiTop.VM.Runner</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

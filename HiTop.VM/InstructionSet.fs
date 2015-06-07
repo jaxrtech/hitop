@@ -17,7 +17,7 @@ let build (instructions: UnbuiltInstructionSet) : Result<BuiltInstructionSet, In
     | Failure x -> Failure x
     | Success _ ->
 
-    let rec f (acc: Dictionary<byte, Instruction>) rest i =
+    let rec f (acc: Dictionary<byte, ByteCode>) rest i =
         match rest with
         | [] -> acc
         | head::rest ->
@@ -30,6 +30,6 @@ let build (instructions: UnbuiltInstructionSet) : Result<BuiltInstructionSet, In
 
     assert (padding > 0)
 
-    let mapping = f (new Dictionary<byte, Instruction>()) (instructions) (byte (padding - 1))
+    let mapping = f (new Dictionary<byte, ByteCode>()) (instructions) (byte (padding - 1))
 
-    Success (upcast new ReadOnlyDictionary<byte, Instruction>(mapping))
+    Success (upcast new ReadOnlyDictionary<byte, ByteCode>(mapping))

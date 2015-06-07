@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.30501.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop", "HiTop\HiTop.fsproj", "{DB6F2E32-4C5D-467A-85E7-47C583C46009}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.VM.Runner", "HiTop.VM.Runner\HiTop.VM.Runner.fsproj", "{DB6F2E32-4C5D-467A-85E7-47C583C46009}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.VM", "HiTop.VM\HiTop.VM.fsproj", "{8004B76D-8F96-4A3D-96B8-2527C7CC3C40}"
 EndProject
