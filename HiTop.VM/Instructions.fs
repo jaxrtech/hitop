@@ -138,18 +138,26 @@ module Comparison =
 module Jumps =
     // Jump to start (reset)
     let rst = make "rst" (fun engine ->
-        { engine with NextReadAddress = 0L } |> Some)
+        engine |> Engine.setNextReadAddress 0L |> Some)
 
-    // TODO: Brainf**k style conditionals
+    // While loops are implemented using markers
 
-let all = EncodedByteMarker :: Arithmetic.all @ Stack.all @ Output.all @ Comparison.all
+module Markers =
+    let all = EncodedByteMarker :: LoopBeginMarker :: LoopEndMarker :: []
+
+let all =
+       Markers.all
+     @ Arithmetic.all
+     @ Stack.all
+     @ Output.all
+     @ Comparison.all
 
 // At startup, run check to ensure all the short names are unique
 let private uniqueCount =
     all
     |> List.choose (function
         | Instruction ins -> ins.ShortName |> Some
-        | EncodedByteMarker as x -> sprintf "%A" x |> Some)
+        | _ as x -> sprintf "%A" x |> Some)
     |> Seq.distinct
     |> Seq.length
 

@@ -5,8 +5,8 @@ module StackElement =
     let toString x = sprintf "%d" x
 
     let boolAsValue = function
-    | false -> 0uy
-    | true  -> 1uy
+    | false -> hitop_false
+    | true  -> hitop_true
 
 module Stack =
     let toString (stack: Stack) =
