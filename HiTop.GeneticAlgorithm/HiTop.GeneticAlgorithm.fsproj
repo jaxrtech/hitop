@@ -51,6 +51,8 @@
   <ItemGroup>
     <Compile Include="CoreTypes.fs" />
     <Compile Include="CoreFunctions.fs" />
+    <Compile Include="Organism.fs" />
+    <Compile Include="Population.fs" />
     <Content Include="packages.config" />
     <Content Include="app.config" />
   </ItemGroup>
