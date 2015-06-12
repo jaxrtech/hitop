@@ -1,7 +1,8 @@
-﻿open HiTop.GeneticAlgorithm
+﻿open HiTop.GeneticAlgorithm.Runner
 
 open System.IO
 open HiTop.VM
+open HiTop.GeneticAlgorithm
 
 let printHeader () =
     printfn "HiTop Compression indev"
@@ -11,8 +12,17 @@ let printHeader () =
 
 [<EntryPoint>]
 let main argv = 
+
+    let result, args = parseArgs argv
+
+    match result with
+    | UsageRequested ->
+        args.Usage() |> printfn "%s"
+        0
     
-    let target = File.OpenRead("test_mini.txt") 
+    | Settings { InputPath = inputPath; OutputPath = outputPath } ->
+
+    let target = File.OpenRead(inputPath)
 
     let instructionSet =
         InstructionSet.filledAtTop Instructions.all
@@ -77,12 +87,11 @@ let main argv =
 
     printfn "info: finished"
 
-    let (organism, fitness) = loop 0 initialPopulation
+    let organism, _ = loop 0 initialPopulation
 
     let check = Organism.evaluate evaluationSettings organism
     assert (check |> Organism.isOptimalFitness evaluationSettings)
 
-    File.WriteAllBytes("output.hitop", organism)
+    File.WriteAllBytes(outputPath, organism)
 
-    System.Console.ReadLine() |> ignore
     0
