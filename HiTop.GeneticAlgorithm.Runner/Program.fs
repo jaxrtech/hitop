@@ -80,6 +80,9 @@ let main argv =
     let (organism, fitness) = loop 0 initialPopulation
 
     let check = Organism.evaluate evaluationSettings organism
+    assert (check |> Organism.isOptimalFitness evaluationSettings)
+
+    File.WriteAllBytes("output.hitop", organism)
 
     System.Console.ReadLine() |> ignore
     0
