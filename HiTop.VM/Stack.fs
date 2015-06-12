@@ -11,6 +11,8 @@ type StackOperationBaseSet = {
 let create (): Stack =
     new ResizeArray<StackElement>()
 
+let empty = create ()
+
 let count (stack: Stack) =
     stack.Count
 

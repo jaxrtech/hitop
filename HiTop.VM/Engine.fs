@@ -4,24 +4,42 @@ open System.IO
 open HiTop.VM.CoreTypes
 open HiTop.VM.Stack
 
-let createFromStream (stream: Stream) instructionSet =
-    stream.Position <- 0L
+module Program =
+    let private emptyStream = Stream.Null
 
-    { IsHalted = false
+    let empty =
+        new BinaryReader(emptyStream)
+
+    let createFromStream stream =
+        new BinaryReader(stream)
+
+let empty =
+    { IsHalted = true
       Cycles = 0UL
-      InstructionSet = instructionSet
-      Stack = Stack.create ()
-      Program = new BinaryReader(stream)
+      InstructionSet = InstructionSet.empty
+      Stack = Stack.empty
+      Program = Program.empty
       LastOutput = None
       LastOperation = None }
 
-let createFromBuffer (buffer: byte array) instructionSet =
-    let stream = new MemoryStream(buffer)
+let create instructionSet =
+    { empty with InstructionSet = instructionSet }
 
-    createFromStream stream instructionSet
+let loadFromStream (stream: Stream) (engine: Engine) =
+    stream.Position <- 0L
+
+    { engine with
+        IsHalted = false
+        Program = Program.createFromStream stream }
+
+let loadFromBuffer (buffer: byte array) (engine: Engine) =
+    engine |> loadFromStream (new MemoryStream(buffer))
 
 let dispose (engine: Engine) =
     engine.Program.Close()
+
+let unload (engine: Engine) =
+    { empty with InstructionSet = engine.InstructionSet }
 
 let nextReadAddress (engine: Engine) =
     engine.Program.BaseStream.Position

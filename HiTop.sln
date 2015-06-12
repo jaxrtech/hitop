@@ -1,13 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.30501.0
+VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.VM.Runner", "HiTop.VM.Runner\HiTop.VM.Runner.fsproj", "{DB6F2E32-4C5D-467A-85E7-47C583C46009}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.VM", "HiTop.VM\HiTop.VM.fsproj", "{8004B76D-8F96-4A3D-96B8-2527C7CC3C40}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.VM.Tests", "HiTop.VM.Tests\HiTop.VM.Tests.fsproj", "{8C0EACBF-E58A-4306-AB69-2DAFA4202657}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.GeneticAlgorithm", "HiTop.GeneticAlgorithm\HiTop.GeneticAlgorithm.fsproj", "{29604028-16DC-42D2-8113-BC37E19EAF72}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{8C0EACBF-E58A-4306-AB69-2DAFA4202657}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C0EACBF-E58A-4306-AB69-2DAFA4202657}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C0EACBF-E58A-4306-AB69-2DAFA4202657}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29604028-16DC-42D2-8113-BC37E19EAF72}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29604028-16DC-42D2-8113-BC37E19EAF72}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29604028-16DC-42D2-8113-BC37E19EAF72}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29604028-16DC-42D2-8113-BC37E19EAF72}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

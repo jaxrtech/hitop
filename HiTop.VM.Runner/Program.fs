@@ -61,13 +61,8 @@ let eval engine =
 [<EntryPoint>]
 let main argv = 
     let instructionSet =
-        let x = InstructionSet.filledAtTop Instructions.all
-
-        match x with
-        | Failure TooManyInstructions ->
-            failwith "error: too many instructions in instruction set. number of instructions exceeds 256."
-        | Success x -> 
-            x |> InstructionSet.build
+        InstructionSet.filledAtTop Instructions.all
+        |> InstructionSet.build
 
     let bytecode =
         let random = new System.Random()
@@ -97,7 +92,10 @@ let main argv =
         
         Array.init 25 (fun _ -> nextByte ())
 
-    let engine = Engine.createFromBuffer bytecode instructionSet
+    let engine =
+        Engine.create instructionSet
+        |> Engine.loadFromBuffer bytecode
+
     eval engine |> ignore
         
     System.Console.ReadLine() |> ignore

@@ -3,22 +3,16 @@
 [<Literal>]
 let MaxInstructionsCount = 256
 
-type InstructionSetBuildFailure =
-     | TooManyInstructions
+let empty =
+    { FromByte = Map.empty
+      FromByteCode = Map.empty }
 
 let filledWithValues : UnbuiltInstructionSet =
     {0uy..255uy}
     |> Seq.fold (fun acc i -> acc |> Map.add i (Value(i))) Map.empty
 
-let check instructions : Result<unit, InstructionSetBuildFailure> =
-    if Seq.length instructions > MaxInstructionsCount
-    then Failure TooManyInstructions
-    else Success ()
-
 let filledAtTop instructions =
-    match check instructions with
-    | Failure x -> Failure x
-    | Success _ ->
+    assert (List.length instructions <= MaxInstructionsCount)
 
     let padding = MaxInstructionsCount - Seq.length instructions
     assert (padding >= 0)
@@ -44,7 +38,6 @@ let filledAtTop instructions =
         (instructions, source)
     
     |> snd
-    |> Success
 
 let build (instructions: UnbuiltInstructionSet) =
     let fromByteCode =
