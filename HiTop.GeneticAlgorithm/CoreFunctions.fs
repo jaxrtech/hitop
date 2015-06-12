@@ -224,19 +224,8 @@ module Population =
         |> Array.map Organism.crossover
 
     let private mutate (population: PopulationT) : PopulationT =
-        // No, we are not going crazy with the mutation. `Oraganism.mutate` already will only mutate
-        // a small portion of the program. We just have to call it to do so.
-        let rate = 0.75
-
-        let willMutate () =
-            random.NextDouble() <= rate
-
         population
-        |> Array.map (fun x ->
-            if willMutate () then
-                x |> Organism.mutate
-            else
-                x)
+        |> Array.map Organism.mutate
 
     let reproduce (population: SelectedPopulation) : PopulationT =
         population
