@@ -4,18 +4,12 @@ open System.Collections.Generic
 open System.Collections.ObjectModel
 open HiTop.VM.CoreTypes
 
-type InstructionSetBuildFailure =
-     | TooManyInstructions
+let empty =
+    let mapping = new Dictionary<byte, ByteCode>()
+    new ReadOnlyDictionary<byte, ByteCode>(mapping)
 
-let check (instructions: UnbuiltInstructionSet) : Result<unit, InstructionSetBuildFailure> =
-    if instructions.Length >= 256
-    then Failure TooManyInstructions
-    else Success ()
-
-let build (instructions: UnbuiltInstructionSet) : Result<BuiltInstructionSet, InstructionSetBuildFailure> =
-    match check instructions with
-    | Failure x -> Failure x
-    | Success _ ->
+let build (instructions: UnbuiltInstructionSet) : BuiltInstructionSet =
+    assert (List.length instructions <= 256)
 
     let rec f (acc: Dictionary<byte, ByteCode>) rest i =
         match rest with
@@ -32,4 +26,4 @@ let build (instructions: UnbuiltInstructionSet) : Result<BuiltInstructionSet, In
 
     let mapping = f (new Dictionary<byte, ByteCode>()) (instructions) (byte (padding - 1))
 
-    Success (upcast new ReadOnlyDictionary<byte, ByteCode>(mapping))
+    upcast new ReadOnlyDictionary<byte, ByteCode>(mapping)
