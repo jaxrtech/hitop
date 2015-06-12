@@ -23,8 +23,8 @@ module Organism =
 
             let willStop =
                 let isHalted = engine'.IsHalted
-                let exceededMaxCycles = engine'.Cycles > (1e7 |> uint64)
-                let exceededMaxStackSize = engine'.Stack.Count > ((length * 4L) |> int)
+                let exceededMaxCycles = engine'.Cycles > (1e6 |> uint64)
+                let exceededMaxStackSize = engine'.Stack.Count > ((length * 2L) |> int)
                 let exceededMaxOutput = (outputCount |> int64) >= length
 
                 isHalted
@@ -77,8 +77,8 @@ module Organism =
                         |> Array.zip buffer'
                         |> Array.map (fun (exp, res) -> exp = res)
                         |> Array.map (function
-                                        | true -> 1
-                                        | false -> 0)
+                                      | true -> 1
+                                      | false -> 0)
                         |> Array.sum
                         |> uint64
 
