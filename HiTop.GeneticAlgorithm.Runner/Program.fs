@@ -38,9 +38,24 @@ let main argv =
             evaluatedPopulation
             |> Array.maxBy snd
 
-        let bestFitness = snd best
+        let bestFitness =
+            snd best
 
-        printfn "gen %d: best fitness %.2f" gen bestFitness
+        let worstFitness =
+            let worst =
+                evaluatedPopulation
+                |> Array.minBy snd
+
+            snd worst
+
+        let avgFitness =
+            let total =
+                evaluatedPopulation
+                |> Array.sumBy snd
+
+            total / (evaluatedPopulation.Length |> float)
+
+        printfn "gen %d: best fitness %.4f | avg fitness %.4f | worst fitness %.4f" gen bestFitness avgFitness worstFitness
 
         if Organism.isOptimalFitness evaluationSettings bestFitness then
             printfn "[!] optimal fitness reached in gen %d" gen
@@ -56,7 +71,11 @@ let main argv =
 
     printHeader ()
 
+    printfn "info: creating gen 0..."
+
     let initialPopulation = Population.create populationSettings
+
+    printfn "info: finished"
 
     let (organism, fitness) = loop 0 initialPopulation
 
