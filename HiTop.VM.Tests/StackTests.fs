@@ -4,18 +4,9 @@ open System
 open Xunit
 open FsUnit.Xunit
 open HiTop.VM
-open HiTop.VM.CoreTypes
 open HiTop.VM.Stack
 
 let random = new Random()
-
-let shouldEqualAsValue x y =
-    StackElement.equalAsOptValue (Value(x)) y
-    |> should be True
-
-let shouldNotEqualAsValue x y =
-    StackElement.equalAsOptValue (Value(x)) y
-    |> should be False
 
 let nextRandomByte () =
     random.Next(int Byte.MinValue, int Byte.MaxValue)
@@ -28,7 +19,7 @@ let pushrandn n stack =
         | n ->
             let x = nextRandomByte ()
 
-            stack |> WrappedStack.push (Value(x))
+            stack |> WrappedStack.push x
 
             // The last item on the stack is index 0
             results.Insert(0, x)
@@ -50,7 +41,7 @@ let ``when created should be empty.`` () =
 let ``when pushed and popped completely should be empty.`` () =
     let s = Stack.create ()
     
-    s |> WrappedStack.push (Value(10uy))
+    s |> WrappedStack.push 10uy
     s |> WrappedStack.pop |> ignore
     
     s |> Stack.count |> should equal 0
@@ -59,9 +50,9 @@ let ``when pushed and popped completely should be empty.`` () =
 let ``when dropping an element should work the same as poping an element.`` () =
     let s = Stack.create ()
 
-    s |> WrappedStack.push (Value(10uy))
-    s |> WrappedStack.push (Value(20uy))
-    s |> WrappedStack.push (Value(30uy))
+    s |> WrappedStack.push 10uy
+    s |> WrappedStack.push 20uy
+    s |> WrappedStack.push 30uy
 
     s |> WrappedStack.pop |> ignore
     s |> WrappedStack.drop
@@ -104,15 +95,14 @@ let ``when dropping a negative or 0 number of elements should never fail or go o
 let ``when pushed and poped should be in the correct order.`` () =
     let s = Stack.create ()
 
-    s |> WrappedStack.push (Value(3uy))
-    s |> WrappedStack.push (Value(2uy))
-    s |> WrappedStack.push (Value(1uy))
+    s |> WrappedStack.push 3uy
+    s |> WrappedStack.push 2uy
+    s |> WrappedStack.push 1uy
 
     let popShouldEqual x =
         s
         |> WrappedStack.pop
-        |> StackElement.equalAsOptValue (Value(x))
-        |> should be True
+        |> should equal x
 
     [1uy; 2uy; 3uy]
     |> List.iter popShouldEqual
@@ -123,25 +113,25 @@ let ``when pushed and poped should be in the correct order.`` () =
 let ``when peeked should return the correct value without removing any values from the stack.`` () =
     let s = Stack.create ()
 
-    s |> WrappedStack.push (Value(3uy))
-    s |> WrappedStack.push (Value(2uy))
-    s |> WrappedStack.push (Value(1uy))
+    s |> WrappedStack.push 3uy
+    s |> WrappedStack.push 2uy
+    s |> WrappedStack.push 1uy
 
     s
     |> WrappedStack.peekAt 2
-    |> shouldEqualAsValue 3uy
+    |> should equal 3uy
 
     s
     |> WrappedStack.peekAt 1
-    |> shouldEqualAsValue 2uy
+    |> should equal 2uy
 
     s
     |> WrappedStack.peekAt 0
-    |> shouldEqualAsValue 1uy
+    |> should equal 1uy
 
     s
     |> WrappedStack.peek
-    |> shouldEqualAsValue 1uy
+    |> should equal 1uy
 
     s |> Stack.notEmpty |> should be True
 
@@ -149,21 +139,21 @@ let ``when peeked should return the correct value without removing any values fr
 let ``when pushed at 0 index and poped at an index, the values should be the same.`` () =
     let s = Stack.create ()
 
-    s |> WrappedStack.pushAt 0 (Value(3uy))
-    s |> WrappedStack.pushAt 0 (Value(2uy))
-    s |> WrappedStack.pushAt 0 (Value(1uy))
+    s |> WrappedStack.pushAt 0 3uy
+    s |> WrappedStack.pushAt 0 2uy
+    s |> WrappedStack.pushAt 0 1uy
 
     s
     |> WrappedStack.popAt 2
-    |> shouldEqualAsValue 3uy
+    |> should equal 3uy
 
     s
     |> WrappedStack.popAt 1
-    |> shouldEqualAsValue 2uy
+    |> should equal 2uy
 
     s
     |> WrappedStack.popAt 0
-    |> shouldEqualAsValue 1uy
+    |> should equal 1uy
 
     s |> Stack.isEmpty |> should be True
 
@@ -199,7 +189,7 @@ let testIndexWrapping f =
 
     s
     |> WrappedStack.peekAt i
-    |> shouldEqualAsValue (values.[i % n])
+    |> should equal (values.[i % n])
 
 [<Fact>]
 let ``when peeking at an index, the operation should support wrap arround correctly.`` () =
@@ -219,7 +209,7 @@ let ``when dropping from an index, the operation should support wrap arround cor
 
     s |> WrappedStack.dropAt i
 
-    s |> WrappedStack.peekAt i |> shouldNotEqualAsValue (values.[i % n])
+    s |> WrappedStack.peekAt i |> should equal (values.[i % n])
     s |> Stack.count |> should equal (n - 1)
 
 [<Fact>]
@@ -232,9 +222,9 @@ let ``when pushing at an index, the operation should support wrap arround correc
     let i = randomWrappingIndex n
     let x = nextRandomByte ()
 
-    s |> WrappedStack.pushAt i (Value(x))
+    s |> WrappedStack.pushAt i x
 
     // You have to add 1 (one) to each wrap around since the size the stack just grew to get to the
     // same position otherwise `i % n` will be off
-    s |> WrappedStack.peekAt (i + ((i / n) * 1)) |> shouldEqualAsValue x
+    s |> WrappedStack.peekAt (i + ((i / n) * 1)) |> should equal x
     s |> Stack.count |> should equal (n + 1)

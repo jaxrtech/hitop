@@ -1,4 +1,4 @@
-﻿module HiTop.Program
+﻿module HiTop.VM.Runner.Program
 
 open HiTop.VM
 open HiTop.VM.InstructionSet
@@ -9,7 +9,7 @@ type StepResult =
 
 let step (i, engine) =
     let printStack i engine =
-        printfn "[%d] S> %s" i (Stack.toString engine.Stack)
+        printfn "[%d] S> %s | [%A]" i (Stack.toString engine.Stack) (engine.LastOperation)
         printfn "[%d] D> %A" i engine.LastOutput
         i + 1
 
@@ -26,7 +26,7 @@ let step (i, engine) =
         | 0 ->
             let i = printStack i engine
             let engine' = f ()
-            let i' = printStackIfRunning i engine
+            let i' = printStackIfRunning i engine'
             (engine', i')
 
         | _ ->
@@ -61,19 +61,41 @@ let eval engine =
 [<EntryPoint>]
 let main argv = 
     let instructionSet =
-        let x = InstructionSet.build Instructions.all
-        match x with
-        | Failure TooManyInstructions ->
-            failwith "error: too many instructions in instruction set. number of instructions exceeds 256."
-        | Success x -> x
+        InstructionSet.filledAtTop Instructions.all
+        |> InstructionSet.build
 
     let bytecode =
         let random = new System.Random()
-        let x = Array.zeroCreate 25
-        random.NextBytes(x)
-        x
 
-    let engine = Engine.createFromBuffer bytecode instructionSet
+        let nextByte () =
+            let operationBytes =
+                instructionSet.FromByteCode
+                |> Seq.choose (fun x ->
+                    let bytecode = x.Key
+                    let raw = x.Value
+                     
+                    match bytecode with
+                    | Value _ -> None
+                    | _       -> Some(raw))
+
+                |> Seq.toArray
+
+            // Try to even out the distribution of bytes and operations generated
+            match random.NextDouble() with
+            | x when x < 0.60 -> // 60% of the time: generate a raw byte
+                let n = random.Next(0, System.Byte.MaxValue |> int)
+                n |> byte
+                
+            | x -> // 40% of the time: generate an operation
+                let i = random.Next(0, Array.length operationBytes)
+                Seq.nth i operationBytes
+        
+        Array.init 25 (fun _ -> nextByte ())
+
+    let engine =
+        Engine.create instructionSet
+        |> Engine.loadFromBuffer bytecode
+
     eval engine |> ignore
         
     System.Console.ReadLine() |> ignore

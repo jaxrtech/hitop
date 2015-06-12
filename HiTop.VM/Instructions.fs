@@ -4,184 +4,85 @@ open HiTop.VM.CoreTypes
 open HiTop.VM.Stack
 
 let private make name op =
-    { ShortName = name; Op = op }
+    { ShortName = name; Op = op } |> Instruction
 
-let buildLambdaFromPartial name engine n f lambdaArgs resultArgs =
-    let finalLambda engine resultArgs =
-        assert ((resultArgs |> Array.length) = n)
+let private peek1 name f = make name (fun engine ->
+    let stack = engine.Stack
 
-        // Drop argument `y` and the lambda itself from the stack
-        engine.Stack |> StrictStack.dropn 2
-        f engine resultArgs
+    let x = stack |> StrictStack.peek
 
-    let rec rootLambda engine lambdaArgs resultArgs =
-                 
-        let buildState lambdaArgs lambda =
-            { ShortName = name
-              Args = lambdaArgs |> Array.map StackElement |> LambdaArg.padTo n
-              Lambda = lambda }
-                          
-        let pushLambda stack lambdaArgs lambda =
-            let state = buildState lambdaArgs lambda
-            engine.Stack |> StrictStack.push (Lambda(state))
+    match x with
+    | Some(x) ->
+        Some(f engine x)
 
-        (fun engine ->
-            // Drop argument `x` and the lambda itself from the stack
-            engine.Stack |> StrictStack.dropn 2
+    | _ -> None)
 
-            let lambda engine =
-                let x = engine.Stack |> StrictStack.peekAt 0
-                match x with
-                | Some(Value x as a) ->
-                    let engine' =
-                        let resultArgs' = Array.append resultArgs [|x|]
-                        let lambdaArgs' = Array.append lambdaArgs [|a|]
+let private pop1 name f = make name (fun engine ->
+    let stack = engine.Stack
 
-                        if resultArgs'.Length = n then
-                            finalLambda engine resultArgs'
-                        else
-                            // Drop argument `x` and the lambda itself from the stack
-                            engine.Stack |> StrictStack.dropn 2
+    let x = stack |> StrictStack.peek
 
-                            let lambda' = rootLambda engine lambdaArgs' resultArgs'
+    match x with
+    | Some(x) ->
+        stack |> StrictStack.drop
+        Some(f engine x)
 
-                            pushLambda engine.Stack lambdaArgs' lambda'
-                            engine
+    | _ -> None)
 
-                    Some(engine')
+let private pop2 name f = make name (fun engine ->
+    let stack = engine.Stack
 
-                | _ -> None
+    let x1 = stack |> StrictStack.peekAt 1
+    let x0 = stack |> StrictStack.peekAt 0
 
-            pushLambda engine.Stack lambdaArgs lambda
-            Some(engine))
+    match (x1, x0) with
+    | Some(x1), Some(x0) ->
+        stack |> StrictStack.dropn 2
+        Some(f engine x1 x0)
 
-    rootLambda engine lambdaArgs resultArgs
+    | _ -> None)
 
-let buildLambdaFromEmpty name engine n f =
-    buildLambdaFromPartial name engine n f (Array.empty) (Array.empty)
+let private ``1->1`` name f = pop1 name (fun engine x0 ->
+    let stack = engine.Stack
 
-let buildLambdaState name engine size f = 
-    { ShortName = name
-      Args = LambdaArg.padding size
-      Lambda = buildLambdaFromEmpty name engine size f }
+    stack |> StrictStack.push (f x0)
+    engine)
 
-let private ``1->1 (raw)`` name onNormal onLambda = make name (fun engine ->
-    let x0 = engine.Stack |> StrictStack.peek
-        
-    match x0 with
-    | Some(Value x) ->
-        onNormal engine x
+let private ``2->1`` name f = pop2 name (fun engine x0 x1 ->
+    let stack = engine.Stack
 
-    | _ ->
-        let lambda engine =
-            // HACK: Right now we are just assuming the lambda is the 1th item and the arg is the
-            //       0th item on the stack so it looks like:
-            //        ... [lambda@1] [arg@0]
+    stack |> StrictStack.push (f x0 x1)
+    engine)
 
-            let x = engine.Stack |> StrictStack.peek
-            match x with
-            | Some(Value x) ->
-                Some(onLambda engine x)
+let private ``1->1:bool`` name f = ``1->1`` name (fun x0 ->
+    f x0 |> StackElement.boolAsValue)
 
-            | _ -> None
-
-        let state = 
-            { ShortName = name
-              Args = [| Placeholder |]
-              Lambda = lambda }
-
-        engine.Stack |> StrictStack.push (Lambda(state))
-        engine)
-
-let private ``1->1`` name f =
-    let resultOf engine x =
-        engine.Stack |> StrictStack.push (f x)
-        engine
-
-    ``1->1 (raw)`` name
-        (fun engine x ->
-            x |> resultOf engine)
-
-        (fun engine x ->
-            engine.Stack |> StrictStack.dropn 2
-            x |> resultOf engine)
-
-// TODO: Generalize on the number of arguments
-
-type ArgumentSpec<'a> = {
-    Count: int
-    selector: StackElement -> bool
-    unwrapper: StackElement -> 'a option
-}
-
-let private readStackArgs stack argumentSpec =
-    let elements = 
-        stack
-        |> StrictStack.peekn argumentSpec.Count
-
-           // Only keep taking arguments while they are of the selected element type
-        |> Seq.takeWhile argumentSpec.selector
-        |> Seq.toList
-
-    let args =
-        elements
-           // Unwrap to list of bytes
-        |> List.choose argumentSpec.unwrapper
-        |> List.toArray
-
-    assert (List.length elements = Array.length args)
-
-    let n = List.length elements
-    (n, elements, args)
-
-let private ``n->1`` name argumentSpec f = make name (fun engine ->
-    let x = engine.Stack |> StrictStack.peekn argumentSpec.Count
-
-    let g engine args =
-        assert (Array.length args = argumentSpec.Count)
-        engine.Stack |> StrictStack.push (f args)
-        engine
-
-    let argsCount, lambdaArgs, resultArgs = readStackArgs engine.Stack argumentSpec
-
-    match lambdaArgs with
-    | args when argsCount = argumentSpec.Count ->
-        engine.Stack |> StrictStack.dropn argumentSpec.Count
-        g engine resultArgs
-
-    | args when argsCount < argumentSpec.Count ->
-        engine.Stack |> StrictStack.dropn argsCount
-        let start = buil
-
-    | args -> // when List.length args = 0 
-        let state = buildLambdaState name engine argumentSpec.Count g
-        engine.Stack |> StrictStack.push (Lambda(state))
-        engine)
-
-
-let private ``1->1:bool`` name f = ``1->1`` name (fun x -> f x |> StackElement.boolAsValue)
-
-let private ``2->1:bool`` name f = ``2->1`` name (fun x0 x1 -> f x0 x1 |> StackElement.boolAsValue)
-
-let private ``2->1:byte`` name f = ``2->1`` name (fun x0 x1 -> Value(f x0 x1))
+let private ``2->1:bool`` name f = ``2->1`` name (fun x0 x1 ->
+    f x0 x1 |> StackElement.boolAsValue)
 
 //
 
 module Arithmetic =
-    let add = ``2->1:byte`` "add" (+)
+    let inc = ``1->1`` "inc" (fun x -> x - 1uy)
 
-    let sub = ``2->1:byte`` "sub" (-)
+    let dec = ``1->1`` "dec" (fun x -> x + 1uy)
 
-    let mul = ``2->1:byte`` "mul" (*)
+    let add = ``2->1`` "add" (+)
 
-    let div = ``2->1:byte`` "div" (fun a -> function
-                            | 0uy -> 0uy
-                            | b   -> a / b)
+    let sub = ``2->1`` "sub" (-)
 
-    let ``mod`` = ``2->1:byte`` "mod" (%)
+    let mul = ``2->1`` "mul" (*)
+
+    let div = ``2->1`` "div" (fun a -> function
+                              | 0uy -> 0uy
+                              | b   -> a / b)
+
+    let ``mod`` = ``2->1`` "mod" (fun a -> function
+                                  | 0uy -> 0uy
+                                  | b   -> a % b)
 
     let all =
-        add :: sub :: mul :: div :: ``mod`` :: []
+        inc :: dec :: add :: sub :: mul :: div :: ``mod`` :: []
 
 module Stack =
     let dup = make "dup" (fun engine ->
@@ -190,9 +91,9 @@ module Stack =
         match x0 with
         | Some(x) ->
             engine.Stack |> StrictStack.push x
-            engine
+            Some(engine)
 
-        | _ -> engine)
+        | _ -> None)
 
     let all = dup :: []
 
@@ -200,26 +101,10 @@ module Output =
     let private withOutputOf x engine = { engine with LastOutput = Some(Byte(x)) }
 
     /// Instruction that reads a value `x` and then outputs it without dropping `x` from the stack
-    let out = ``1->1 (raw)`` "out"
-                (fun engine x -> 
-                    // Leave input on the stack during normal execution
-                    engine |> withOutputOf x)
-
-                (fun engine x ->
-                    // Drop only the lambda itself from the stack and not arg `x`
-                    engine.Stack |> StrictStack.dropAt 1
-                    engine |> withOutputOf x)
-
-    let put = ``1->1 (raw)`` "put"
-                (fun engine x ->
-                    // Drop the input during normal execution
-                    engine.Stack |> StrictStack.drop
-                    engine |> withOutputOf x)
-
-                (fun engine x ->
-                    // Drop argument `x` and the lambda itself from the stack
-                    engine.Stack |> StrictStack.dropn 2
-                    engine |> withOutputOf x)
+    let out = peek1 "out" (fun engine x -> engine |> withOutputOf x)
+    
+    /// Instruction that reads a value `x` and then outputs it dropping `x` from the stack
+    let put = pop1 "put" (fun engine x -> engine |> withOutputOf x)
 
     let all = out :: put :: []
 
@@ -253,54 +138,32 @@ module Comparison =
 module Jumps =
     // Jump to start (reset)
     let rst = make "rst" (fun engine ->
-        { engine with NextReadAddress = 0L })
+        engine |> Engine.setNextReadAddress 0L |> Some)
 
-    // Jump to start (reset)
-    let jmp_64 =
-        let name = "jmp_64"
-        make name (fun engine ->
-            let size = 8 // in bytes
+    // While loops are implemented using markers
 
-            let args =
-                engine.Stack
-                |> StrictStack.peekn size
-               
-                   // Only keep taking arguments while they are of `Value`
-                |> Seq.takeWhile (function
-                                    | Value(x) -> true
-                                    | _ -> false)
-                |> Seq.toList
+module Markers =
+    let all = EncodedByteMarker :: LoopBeginMarker :: LoopEndMarker :: []
 
-                   // Unwrap to list of bytes
-                |> List.choose (function
-                                    | Value(x) -> Some(x)
-                                    | _ -> None)
-        
-            let f engine x =
-                let address =
-                    let i =
-                        // Since the value of the address is always a signed int64 (don't ask me why),
-                        // we want to have the offset position only go to the maximum of a int64 even
-                        // though we always want it >= 0 when reading the values from the VM.
-                    
-                        let x = System.BitConverter.ToUInt64(args |> List.toArray, 0)
-                        x % (uint64 System.Int64.MaxValue) |> int64
+let toString = function
+    | Value raw         -> sprintf "%d" raw
+    | Instruction insr  -> insr.ShortName
+    | EncodedByteMarker -> "$"
+    | LoopBeginMarker   -> "["
+    | LoopEndMarker     -> "]"
 
-                    // Prevent divide by zero
-                    match engine.Program.BaseStream.Length with
-                    | 0L -> 0L
-                    | n -> (uint64 i) % (uint64 n) |> int64
+let all =
+       Markers.all
+     @ Arithmetic.all
+     @ Stack.all
+     @ Output.all
+     @ Comparison.all
 
-                { engine with NextReadAddress = address }
+// At startup, run check to ensure all the short names are unique
+let private uniqueCount =
+    all
+    |> List.map toString
+    |> Seq.distinct
+    |> Seq.length
 
-            match args with
-            | args when (args |> List.length) = size ->
-                f engine args
-
-            | _ ->
-                let state = buildLambdaState name engine size f
-                engine.Stack |> StrictStack.push (Lambda(state))
-                engine)
-
-
-let all = Arithmetic.all @ Stack.all @ Output.all @ Comparison.all
+assert (all.Length = uniqueCount)
