@@ -13,6 +13,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.GeneticAlgorithm", "H
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.GeneticAlgorithm.Runner", "HiTop.GeneticAlgorithm.Runner\HiTop.GeneticAlgorithm.Runner.fsproj", "{26540643-1456-478B-8EF7-0DEB1336BADB}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.Serialization", "HiTop.Serialization\HiTop.Serialization.fsproj", "{2FAB548C-61C5-4CC7-AEC0-18BE82BC0144}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{26540643-1456-478B-8EF7-0DEB1336BADB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{26540643-1456-478B-8EF7-0DEB1336BADB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{26540643-1456-478B-8EF7-0DEB1336BADB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2FAB548C-61C5-4CC7-AEC0-18BE82BC0144}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2FAB548C-61C5-4CC7-AEC0-18BE82BC0144}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2FAB548C-61C5-4CC7-AEC0-18BE82BC0144}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2FAB548C-61C5-4CC7-AEC0-18BE82BC0144}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
