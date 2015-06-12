@@ -61,25 +61,39 @@ let eval engine =
 [<EntryPoint>]
 let main argv = 
     let instructionSet =
-        let x = InstructionSet.build Instructions.all
+        let x = InstructionSet.filledAtTop Instructions.all
+
         match x with
         | Failure TooManyInstructions ->
             failwith "error: too many instructions in instruction set. number of instructions exceeds 256."
-        | Success x -> x
+        | Success x -> 
+            x |> InstructionSet.build
 
     let bytecode =
         let random = new System.Random()
 
         let nextByte () =
+            let operationBytes =
+                instructionSet.FromByteCode
+                |> Seq.choose (fun x ->
+                    let bytecode = x.Key
+                    let raw = x.Value
+                     
+                    match bytecode with
+                    | Value _ -> None
+                    | _       -> Some(raw))
+
+                |> Seq.toArray
+
             // Try to even out the distribution of bytes and operations generated
             match random.NextDouble() with
-            | x when x < 0.40 -> // 40% of the time: generate a raw byte
+            | x when x < 0.60 -> // 60% of the time: generate a raw byte
                 let n = random.Next(0, System.Byte.MaxValue |> int)
                 n |> byte
                 
-            | x -> // 60% of the time: generate an operation
-                let i = random.Next(0, instructionSet.Count)
-                Seq.nth i instructionSet.Keys
+            | x -> // 40% of the time: generate an operation
+                let i = random.Next(0, Array.length operationBytes)
+                Seq.nth i operationBytes
         
         Array.init 25 (fun _ -> nextByte ())
 

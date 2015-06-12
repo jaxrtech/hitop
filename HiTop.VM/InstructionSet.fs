@@ -1,35 +1,56 @@
 ﻿module HiTop.VM.InstructionSet
 
-open System.Collections.Generic
-open System.Collections.ObjectModel
-open HiTop.VM.CoreTypes
+[<Literal>]
+let MaxInstructionsCount = 256
 
 type InstructionSetBuildFailure =
      | TooManyInstructions
 
-let check (instructions: UnbuiltInstructionSet) : Result<unit, InstructionSetBuildFailure> =
-    if instructions.Length >= 256
+let filledWithValues : UnbuiltInstructionSet =
+    {0uy..255uy}
+    |> Seq.fold (fun acc i -> acc |> Map.add i (Value(i))) Map.empty
+
+let check instructions : Result<unit, InstructionSetBuildFailure> =
+    if Seq.length instructions > MaxInstructionsCount
     then Failure TooManyInstructions
     else Success ()
 
-let build (instructions: UnbuiltInstructionSet) : Result<BuiltInstructionSet, InstructionSetBuildFailure> =
+let filledAtTop instructions =
     match check instructions with
     | Failure x -> Failure x
     | Success _ ->
 
-    let rec f (acc: Dictionary<byte, ByteCode>) rest i =
-        match rest with
-        | [] -> acc
-        | head::rest ->
-            acc.[i] <- head
-            assert (i <> 255uy) // no wrap over
-            f acc rest (i + 1uy)
+    let padding = MaxInstructionsCount - Seq.length instructions
+    assert (padding >= 0)
 
-    // Add padding at the beginning for unencoded byte literals if we have room for it
-    let padding = 256 - instructions.Length
+    let startPos = padding |> byte
+    let endPos = 255uy
+    let length = int(endPos - startPos) + 1
 
-    assert (padding > 0)
+    assert (List.length instructions = length)
+    
+    let source = filledWithValues
 
-    let mapping = f (new Dictionary<byte, ByteCode>()) (instructions) (byte (padding - 1))
+    {startPos..endPos}
+    |> Seq.fold
+        (fun acc i ->
+            let instructions, map = acc
+            match instructions with
+            | [] -> ([], map)
+            | head::rest ->
+                let map' = map |> Map.add i head
+                (rest, map'))
+    
+        (instructions, source)
+    
+    |> snd
+    |> Success
 
-    Success (upcast new ReadOnlyDictionary<byte, ByteCode>(mapping))
+let build (instructions: UnbuiltInstructionSet) =
+    let fromByteCode =
+        instructions
+        |> Seq.map (fun pair -> (pair.Value, pair.Key))
+        |> Map.ofSeq
+
+    { FromByte = instructions
+      FromByteCode = fromByteCode }

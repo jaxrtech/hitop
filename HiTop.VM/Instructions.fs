@@ -145,6 +145,13 @@ module Jumps =
 module Markers =
     let all = EncodedByteMarker :: LoopBeginMarker :: LoopEndMarker :: []
 
+let toString = function
+    | Value raw         -> sprintf "%d" raw
+    | Instruction insr  -> insr.ShortName
+    | EncodedByteMarker -> "$"
+    | LoopBeginMarker   -> "["
+    | LoopEndMarker     -> "]"
+
 let all =
        Markers.all
      @ Arithmetic.all
@@ -155,9 +162,7 @@ let all =
 // At startup, run check to ensure all the short names are unique
 let private uniqueCount =
     all
-    |> List.choose (function
-        | Instruction ins -> ins.ShortName |> Some
-        | _ as x -> sprintf "%A" x |> Some)
+    |> List.map toString
     |> Seq.distinct
     |> Seq.length
 

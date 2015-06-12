@@ -76,17 +76,8 @@ type private EngineTransformer = Engine -> Engine
 
 //
 
-type private InteprettedByteCode =
-     | Value of byte
-     | ByteCode of ByteCode
-
 let private interpret engine raw =
-    // If the byte is not assigned, it is a raw unencoded byte
-    if not (engine.InstructionSet.ContainsKey(raw)) then
-        Value(raw)
-    else
-        let op = engine.InstructionSet.[raw]
-        ByteCode(op)
+    engine.InstructionSet.FromByte.[raw]
 
 //
 
@@ -207,11 +198,7 @@ let private scanForMarker engine raw op context =
                 // TODO: And this is why working with nested discriminated unions are an
                 //       absolute pain to deal with
                 let isMatch = function
-                    | ByteCode(op) ->
-                        match op with
-                        | x when context.markerPredicate x -> true
-                        | _ -> false
-
+                    | x when context.markerPredicate x -> true
                     | _ -> false
 
                 // The current program address is at the current byte that was
@@ -260,71 +247,68 @@ let private scanForMarker engine raw op context =
 let step (engine: Engine) : Engine =
     engine
     |> rootExecuteWith (fun engine raw -> function
-       | Value(raw) ->
+        | Value(raw) ->
             raw
             |> push engine
             |> withLastOperation (PushedUnencodedByte(raw))
+      
+        | EncodedByteMarker ->
+            engine
+            |> readNextWith (fun engine' raw' ->
+                raw'
+                |> push engine'
+                |> withLastOperation (PushedEncodedByte(raw')))
 
-       | ByteCode(op) ->
-            match op with
-            | EncodedByteMarker ->
+        | LoopBeginMarker as op ->
+            scanForMarker engine raw op {
+                loopPredicate =
+                    // Match for false since if we had
+                    //   while (false) { ... }
+                    //
+                    // We are going to jump to the end of the loop so we need to find the end
+                    // marker
+                    (=) hitop_false
 
-                engine
-                |> readNextWith (fun engine' raw' ->
-                    raw'
-                    |> push engine'
-                    |> withLastOperation (PushedEncodedByte(raw')))
+                markerPredicate = function
+                    | LoopEndMarker -> true
+                    | _ -> false
 
-            | LoopBeginMarker ->
-                scanForMarker engine raw op {
-                    loopPredicate =
-                        // Match for false since if we had
-                        //   while (false) { ... }
-                        //
-                        // We are going to jump to the end of the loop so we need to find the end
-                        // marker
-                        (=) hitop_false
+                stepPosition =
+                    (+) 1L
 
-                    markerPredicate = function
-                        | LoopEndMarker -> true
-                        | _ -> false
+                ResultWhenMarkerFound = JumpedToLoopEndMarker
+                ResultWhenPredicateFailed = ContinuedAfterLoopBeginMarker
+            }
 
-                    stepPosition =
-                        (+) 1L
+        | LoopEndMarker as op ->
+            scanForMarker engine raw op {
+                loopPredicate =
+                    // Match for true since if we had
+                    //   while (true) { ... }
+                    //
+                    // We are going to jump to the beginning of the loop so we need to find the
+                    // end marker
+                    (<>) hitop_false
 
-                    ResultWhenMarkerFound = JumpedToLoopEndMarker
-                    ResultWhenPredicateFailed = ContinuedAfterLoopBeginMarker
-                }
+                markerPredicate = function
+                    | LoopBeginMarker -> true
+                    | _ -> false
 
-            | LoopEndMarker ->
-                scanForMarker engine raw op {
-                    loopPredicate =
-                        // Match for true since if we had
-                        //   while (true) { ... }
-                        //
-                        // We are going to jump to the beginning of the loop so we need to find the
-                        // end marker
-                        (=) hitop_true
+                stepPosition =
+                    (-) 1L
 
-                    markerPredicate = function
-                        | LoopBeginMarker -> true
-                        | _ -> false
+                ResultWhenMarkerFound = JumpedToLoopBeginMarker
+                ResultWhenPredicateFailed = ContinuedAfterLoopEndMarker
+            }
 
-                    stepPosition =
-                        (-) 1L
+        | Instruction op as bytecode ->
+            let result = op.Op engine
+            match result with
+            | Some(engine') ->
+                engine'
+                |> withLastOperation (ExecutedOperation(op.ShortName))
 
-                    ResultWhenMarkerFound = JumpedToLoopBeginMarker
-                    ResultWhenPredicateFailed = ContinuedAfterLoopEndMarker
-                }
-
-            | Instruction op as bytecode ->
-                let result = op.Op engine
-                match result with
-                | Some(engine') ->
-                    engine'
-                    |> withLastOperation (ExecutedOperation(op.ShortName))
-
-                | None ->
-                    // The operation does not have sufficient arguments and will just be converted
-                    // to the raw byte value and pushed on the stack
-                    engine |> pushFailedOperation raw bytecode)
+            | None ->
+                // The operation does not have sufficient arguments and will just be converted
+                // to the raw byte value and pushed on the stack
+                engine |> pushFailedOperation raw bytecode)
