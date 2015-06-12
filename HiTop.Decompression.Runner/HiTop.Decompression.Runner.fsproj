@@ -5,14 +5,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>26540643-1456-478b-8ef7-0deb1336badb</ProjectGuid>
+    <ProjectGuid>ce13ce44-e635-4dc7-a3a3-2eec9cf1c058</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>HiTop.GeneticAlgorithm.Runner</RootNamespace>
-    <AssemblyName>HiTop.GeneticAlgorithm.Runner</AssemblyName>
+    <RootNamespace>HiTop.Decompression.Runner</RootNamespace>
+    <AssemblyName>HiTop.Decompression.Runner</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
-    <Name>HiTop.GeneticAlgorithm.Runner</Name>
+    <Name>HiTop.Decompression.Runner</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -23,9 +23,8 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\HiTop.GeneticAlgorithm.Runner.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\HiTop.Decompression.Runner.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
-    <StartArguments>--input test_mini.txt</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -35,9 +34,8 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Release\HiTop.GeneticAlgorithm.Runner.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\HiTop.Decompression.Runner.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
-    <StartArguments>--input test_mini.txt</StartArguments>
   </PropertyGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -59,15 +57,27 @@
     <Compile Include="Args.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
-    <Content Include="test.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="test_mini.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="UnionArgParser">
+      <HintPath>..\packages\UnionArgParser.0.8.7\lib\net40\UnionArgParser.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\HiTop.Decompression\HiTop.Decompression.fsproj">
+      <Name>HiTop.Decompression</Name>
+      <Project>{429082e8-5e4c-499f-afd1-97ba5e8917ff}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\HiTop.Serialization\HiTop.Serialization.fsproj">
       <Name>HiTop.Serialization</Name>
       <Project>{2fab548c-61c5-4cc7-aec0-18be82bc0144}</Project>
@@ -78,22 +88,6 @@
       <Project>{8004b76d-8f96-4a3d-96b8-2527c7cc3c40}</Project>
       <Private>True</Private>
     </ProjectReference>
-    <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <ProjectReference Include="..\HiTop.GeneticAlgorithm\HiTop.GeneticAlgorithm.fsproj">
-      <Name>HiTop.GeneticAlgorithm</Name>
-      <Project>{29604028-16dc-42d2-8113-bc37e19eaf72}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <Reference Include="UnionArgParser">
-      <HintPath>..\packages\UnionArgParser.0.8.7\lib\net40\UnionArgParser.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

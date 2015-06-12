@@ -17,6 +17,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.Serialization", "HiTo
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.Decompression", "HiTop.Decompression\HiTop.Decompression.fsproj", "{429082E8-5E4C-499F-AFD1-97BA5E8917FF}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "HiTop.Decompression.Runner", "HiTop.Decompression.Runner\HiTop.Decompression.Runner.fsproj", "{CE13CE44-E635-4DC7-A3A3-2EEC9CF1C058}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,10 @@ Global
 		{429082E8-5E4C-499F-AFD1-97BA5E8917FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{429082E8-5E4C-499F-AFD1-97BA5E8917FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{429082E8-5E4C-499F-AFD1-97BA5E8917FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE13CE44-E635-4DC7-A3A3-2EEC9CF1C058}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE13CE44-E635-4DC7-A3A3-2EEC9CF1C058}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE13CE44-E635-4DC7-A3A3-2EEC9CF1C058}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE13CE44-E635-4DC7-A3A3-2EEC9CF1C058}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

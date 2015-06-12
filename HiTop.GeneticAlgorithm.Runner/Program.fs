@@ -1,44 +1,18 @@
-﻿open HiTop.GeneticAlgorithm.Runner
+﻿module HiTop.GeneticAlgorithm.Runner.Program
 
 open System.IO
 open HiTop.VM
+open HiTop.Serialization
 open HiTop.GeneticAlgorithm
+open HiTop.GeneticAlgorithm.Runner
 
 let printHeader () =
-    printfn "HiTop Compression indev"
+    printfn "HiTop Compressor indev"
     printfn "Copyright (c) 2015 Josh Bowden & Patrick Ryan"
     printfn "CONFIDENTIAL MATERIAL. DO NOT REDISTRIBUTE.\n"
     printfn "info: started at %s" (System.DateTime.Now.ToString())
 
-[<EntryPoint>]
-let main argv = 
-
-    let result, args = parseArgs argv
-
-    match result with
-    | UsageRequested ->
-        args.Usage() |> printfn "%s"
-        0
-    
-    | Settings { InputPath = inputPath; OutputPath = outputPath } ->
-
-    let target = File.OpenRead(inputPath)
-
-    let instructionSet =
-        InstructionSet.filledAtTop Instructions.all
-        |> InstructionSet.build
-
-    let populationSettings = {
-        PopulationCount = 25
-        ProgramLength = target.Length |> int32
-        InstructionSet = instructionSet
-    }
-
-    let evaluationSettings =
-        { Target = new BinaryReader(target)
-          TargetLength = target.Length
-          InstructionSet = instructionSet }
-
+let evolveUntilOptimal evaluationSettings initialPopulation =
     let rec loop gen population =
         let evaluatedPopulation =
             population
@@ -79,19 +53,59 @@ let main argv =
 
         loop (gen + 1) nextPopulation
 
+    loop 0 initialPopulation
+
+[<EntryPoint>]
+let main argv = 
+
+    let result, args = parseArgs argv
+
+    match result with
+    | UsageRequested ->
+        args.Usage() |> printfn "%s"
+        0
+    
+    | Settings { InputPath = inputPath; OutputPath = outputPath } ->
+
+    let target = File.OpenRead(inputPath)
+
+    let instructionSet =
+        InstructionSet.filledAtTop Instructions.all
+        |> InstructionSet.build
+
+    let targetLength = target.Length
+
+    let populationSettings = {
+        PopulationCount = 25
+        ProgramLength = targetLength |> int32
+        InstructionSet = instructionSet
+    }
+
+    let evaluationSettings =
+        { Target = new BinaryReader(target)
+          TargetLength = targetLength
+          InstructionSet = instructionSet }
+
     printHeader ()
 
-    printfn "info: creating gen 0..."
+    let initialPopulation =
+        printfn "info: creating gen 0..."
 
-    let initialPopulation = Population.create populationSettings
+        let x = Population.create populationSettings
 
-    printfn "info: finished"
+        printfn "info: finished"
+        x
 
-    let organism, _ = loop 0 initialPopulation
+    let organism, _ = initialPopulation|> evolveUntilOptimal evaluationSettings
 
-    let check = Organism.evaluate evaluationSettings organism
-    assert (check |> Organism.isOptimalFitness evaluationSettings)
+    let context = {
+        SerializationContext.Program = organism
+        FileName = Path.GetFileName(inputPath)
+        FileSize = targetLength |> int32
+    }
 
-    File.WriteAllBytes(outputPath, organism)
+    let output = File.OpenWrite(outputPath)
+
+    context |> Serializer.serializeTo output
 
     0

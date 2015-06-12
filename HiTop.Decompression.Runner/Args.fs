@@ -1,5 +1,6 @@
-﻿[<AutoOpen>]
-module HiTop.GeneticAlgorithm.Runner.Args
+﻿// TODO: This is a quick copy-and-pasted chunk of code from Args.fs in HiTop.GeneticAlgorithm.Runner
+[<AutoOpen>]
+module HiTop.Decompression.Runner.Args
 
 open System.IO
 open Nessos.UnionArgParser
@@ -11,8 +12,8 @@ with
     interface IArgParserTemplate with
         member s.Usage =
             match s with
-            | Input _ -> "specify the path of the input file to compress."
-            | Output _ -> "specify the path of the output file to save the resulting miniprogram to."
+            | Input _ -> "specify the path of the input miniprogram to decompress."
+            | Output _ -> "specify the path of the output file to save the resulting decompressed file to."
 
 let private parser = UnionArgParser.Create<CommandLineArgs>()
 
@@ -20,7 +21,7 @@ let private parser = UnionArgParser.Create<CommandLineArgs>()
 
 type AppSettings = {
     InputPath: string
-    OutputPath: string
+    OutputPath: string option
 }
 
 type ParseArgsResult =
@@ -44,9 +45,9 @@ let parseArgs argv =
     let outputPath =
         if args.Contains <@ Output @> then
             args.PostProcessResult(<@ Output @>, ensurePath "output")
+            |> Some
         else
-            let name = Path.GetFileName(inputPath)
-            name + ".hitop"
+            None
 
     let settings =
         { InputPath = inputPath

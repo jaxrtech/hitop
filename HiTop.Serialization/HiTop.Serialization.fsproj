@@ -42,7 +42,10 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Library.fs" />
+    <Compile Include="CoreTypes.fs" />
+    <Compile Include="CoreFunctions.fs" />
+    <Compile Include="ContextSerializer.fs" />
+    <Compile Include="Serializer.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
