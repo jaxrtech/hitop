@@ -1,7 +1,6 @@
 ﻿module HiTop.VM.Runner.Program
 
 open HiTop.VM
-open HiTop.VM.InstructionSet
 
 type StepResult =
      | Halted of Engine
@@ -65,36 +64,11 @@ let main argv =
         |> InstructionSet.build
 
     let bytecode =
-        let random = new System.Random()
-
-        let nextByte () =
-            let operationBytes =
-                instructionSet.FromByteCode
-                |> Seq.choose (fun x ->
-                    let bytecode = x.Key
-                    let raw = x.Value
-                     
-                    match bytecode with
-                    | Value _ -> None
-                    | _       -> Some(raw))
-
-                |> Seq.toArray
-
-            // Try to even out the distribution of bytes and operations generated
-            match random.NextDouble() with
-            | x when x < 0.60 -> // 60% of the time: generate a raw byte
-                let n = random.Next(0, System.Byte.MaxValue |> int)
-                n |> byte
-                
-            | x -> // 40% of the time: generate an operation
-                let i = random.Next(0, Array.length operationBytes)
-                Seq.nth i operationBytes
-        
-        Array.init 25 (fun _ -> nextByte ())
+        let pregen = Helpers.prepareRandomByte instructionSet
+        Array.init 25 (Helpers.initWithRandomByte pregen)
 
     let engine =
-        Engine.create instructionSet
-        |> Engine.loadFromBuffer bytecode
+        Engine.initFromBuffer instructionSet bytecode
 
     eval engine |> ignore
         

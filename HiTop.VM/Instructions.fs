@@ -3,10 +3,10 @@
 open HiTop.VM.CoreTypes
 open HiTop.VM.Stack
 
-let private make name op =
+let inline private make name op =
     { ShortName = name; Op = op } |> Instruction
 
-let private peek1 name f = make name (fun engine ->
+let inline private peek1 name f = make name (fun engine ->
     let stack = engine.Stack
 
     let x = stack |> StrictStack.peek
@@ -17,7 +17,7 @@ let private peek1 name f = make name (fun engine ->
 
     | _ -> None)
 
-let private pop1 name f = make name (fun engine ->
+let inline private pop1 name f = make name (fun engine ->
     let stack = engine.Stack
 
     let x = stack |> StrictStack.peek
@@ -29,7 +29,7 @@ let private pop1 name f = make name (fun engine ->
 
     | _ -> None)
 
-let private pop2 name f = make name (fun engine ->
+let inline private pop2 name f = make name (fun engine ->
     let stack = engine.Stack
 
     let x1 = stack |> StrictStack.peekAt 1
@@ -42,22 +42,22 @@ let private pop2 name f = make name (fun engine ->
 
     | _ -> None)
 
-let private ``1->1`` name f = pop1 name (fun engine x0 ->
+let inline private ``1->1`` name f = pop1 name (fun engine x0 ->
     let stack = engine.Stack
 
     stack |> StrictStack.push (f x0)
     engine)
 
-let private ``2->1`` name f = pop2 name (fun engine x0 x1 ->
+let inline private ``2->1`` name f = pop2 name (fun engine x0 x1 ->
     let stack = engine.Stack
 
     stack |> StrictStack.push (f x0 x1)
     engine)
 
-let private ``1->1:bool`` name f = ``1->1`` name (fun x0 ->
+let inline private ``1->1:bool`` name f = ``1->1`` name (fun x0 ->
     f x0 |> StackElement.boolAsValue)
 
-let private ``2->1:bool`` name f = ``2->1`` name (fun x0 x1 ->
+let inline private ``2->1:bool`` name f = ``2->1`` name (fun x0 x1 ->
     f x0 x1 |> StackElement.boolAsValue)
 
 //
@@ -140,19 +140,20 @@ module Jumps =
     let rst = make "rst" (fun engine ->
         engine |> Engine.setNextReadAddress 0L |> Some)
 
-    // While loops are implemented using markers
+    let all = rst :: LoopBeginMarker :: LoopEndMarker :: []
 
 module Markers =
-    let all = EncodedByteMarker :: LoopBeginMarker :: LoopEndMarker :: []
-
-let toString = function
-    | Value raw         -> sprintf "%d" raw
-    | Instruction insr  -> insr.ShortName
-    | EncodedByteMarker -> "$"
-    | LoopBeginMarker   -> "["
-    | LoopEndMarker     -> "]"
+    let all = EncodedByteMarker :: []
 
 let all =
+       Markers.all
+     @ Jumps.all
+     @ Arithmetic.all
+     @ Stack.all
+     @ Output.all
+     @ Comparison.all
+
+let allExceptJumps =
        Markers.all
      @ Arithmetic.all
      @ Stack.all
@@ -162,7 +163,7 @@ let all =
 // At startup, run check to ensure all the short names are unique
 let private uniqueCount =
     all
-    |> List.map toString
+    |> List.map ByteCode.toString
     |> Seq.distinct
     |> Seq.length
 

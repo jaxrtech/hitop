@@ -4,27 +4,29 @@ module HiTop.GeneticAlgorithm.CoreTypes
 open System.IO
 open HiTop.VM
 
-type Organism = byte array
+type OrganismT = byte array
 
 type PopulationSettings = {
      PopulationCount: int
      ProgramLength: int
+     InstructionSet: BuiltInstructionSet
 }
 
-type Population = Organism array
+type PopulationT = OrganismT array
 
 type Fitness = float
 
 type EvaluationSettings = {
      Target: BinaryReader
-     BaseEngine: Engine
+     TargetLength: int64
+     InstructionSet: BuiltInstructionSet
 }
 
-type EvaluatedOrganism = Organism * Fitness
+type EvaluatedOrganism = OrganismT * Fitness
 
 type EvaluatedPopulation = EvaluatedOrganism array
 
-type OrganismPair = Organism * Organism
+type OrganismPair = OrganismT * OrganismT
 
 type SelectedPopulation = OrganismPair array
 

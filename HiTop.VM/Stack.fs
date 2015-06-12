@@ -11,8 +11,6 @@ type StackOperationBaseSet = {
 let create (): Stack =
     new ResizeArray<StackElement>()
 
-let empty = create ()
-
 let count (stack: Stack) =
     stack.Count
 
@@ -97,7 +95,7 @@ type StackOperations = {
 
 }
 
-let buildOperations (ops: StackOperationBaseSet) =
+let private buildOperations (ops: StackOperationBaseSet) =
     { peekAt = ops.peekAt
       dropAt = ops.dropAt
       pushAt = ops.pushAt

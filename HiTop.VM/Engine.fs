@@ -17,7 +17,7 @@ let empty =
     { IsHalted = true
       Cycles = 0UL
       InstructionSet = InstructionSet.empty
-      Stack = Stack.empty
+      Stack = Stack.create ()
       Program = Program.empty
       LastOutput = None
       LastOperation = None }
@@ -25,15 +25,33 @@ let empty =
 let create instructionSet =
     { empty with InstructionSet = instructionSet }
 
-let loadFromStream (stream: Stream) (engine: Engine) =
+let inline private ensureReset engine =
+    let x = engine
+
+    assert (x.Cycles = 0UL)
+    assert (x.IsHalted = false)
+    assert (x.LastOperation = None)
+    assert (x.LastOutput = None)
+    assert (x.Stack.Count = 0)
+
+    x
+
+let initFromStream (instructionSet: BuiltInstructionSet) (stream: Stream) =
     stream.Position <- 0L
 
-    { engine with
-        IsHalted = false
-        Program = Program.createFromStream stream }
+    let x =
+        { empty with
+            IsHalted = false
+            InstructionSet = instructionSet
+            Program = Program.createFromStream stream
+            Stack = Stack.create () }
+    
+    ensureReset x
 
-let loadFromBuffer (buffer: byte array) (engine: Engine) =
-    engine |> loadFromStream (new MemoryStream(buffer))
+
+let initFromBuffer (instructionSet: BuiltInstructionSet) (buffer: byte array) =
+    let x = initFromStream instructionSet (new MemoryStream(buffer))
+    ensureReset x
 
 let dispose (engine: Engine) =
     engine.Program.Close()
@@ -110,7 +128,7 @@ type private ExecutionState =
 
 [<AutoOpen>]
 module private Execution =
-    let checkForEndOfProgram engine =
+    let inline checkForEndOfProgram engine =
         if isEndOfProgram engine then
             engine
             |> markAsHalted
@@ -120,7 +138,7 @@ module private Execution =
             engine
             |> Running
     
-    let executeInContextWith f context (engine: Engine) : Engine =
+    let inline executeInContextWith f context (engine: Engine) : Engine =
         engine
         |> context.preApply
         |> checkForEndOfProgram
@@ -183,7 +201,7 @@ let private pushFailedOperation raw op engine =
     let name =
         match op with
         | Instruction(insr) -> insr.ShortName
-        | op -> sprintf "%A" op
+        | op -> ByteCode.toString op
 
     raw
     |> push engine

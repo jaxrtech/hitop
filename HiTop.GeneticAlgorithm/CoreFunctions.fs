@@ -9,32 +9,48 @@ let private random = new System.Random()
 // TODO: Async?
 
 module Organism =
-    let createRandom programLength : Organism =
-        let buffer = Array.zeroCreate programLength
-        random.NextBytes(buffer);
-        buffer
+    let createRandom programLength instructionSet : OrganismT =
+        Array.init programLength (Helpers.initWithRandomByte instructionSet)
 
-    let private score (target: BinaryReader) engine =
-        let rec score acc engine =
+    let private score (settings: EvaluationSettings) engine =
+        let target = settings.Target
+        target.BaseStream.Position <- 0L
+
+        let rec score acc outputCount engine =
             let engine' = engine |> Engine.step
+            
+            let length = settings.TargetLength
 
-            if engine'.IsHalted then
-                acc
+            let willStop =
+                let isHalted = engine'.IsHalted
+                let exceededMaxCycles = engine'.Cycles > (1e7 |> uint64)
+                let exceededMaxStackSize = engine'.Stack.Count > ((length * 4L) |> int)
+                let exceededMaxOutput = (outputCount |> int64) >= length
+
+                isHalted
+                || exceededMaxCycles
+                || exceededMaxStackSize
+                || exceededMaxOutput
+
+            if willStop then
+                (acc, outputCount)
             else
                 match engine'.LastOutput with
-                | None -> acc
+                | None ->
+                    score acc outputCount engine'
+                
                 | Some(Byte x) ->
                     if x = target.ReadByte() then
-                        score (acc + 1) engine'
+                        score (acc + 1UL) (outputCount + 1UL) engine'
                     else
-                        score acc engine'
+                        score acc (outputCount + 1UL) engine'
                 | Some (Buffer buffer) ->
                     // Ensure that the array lengths are always the same by making sure that the
                     // remaining length in the target stream takes precedent over what the program
                     // is returning to us
 
                     let remainingLength =
-                        let x = target.BaseStream.Length - target.BaseStream.Position
+                        let x = length - target.BaseStream.Position
                         
                         // HACK: F#'s `Array` module uses `int32`. Will need to fix this to handle
                         //       larger files
@@ -64,38 +80,38 @@ module Organism =
                                         | true -> 1
                                         | false -> 0)
                         |> Array.sum
+                        |> uint64
 
-                    score (acc + points) engine'
+                    score (acc + points) (outputCount + (length |> uint64)) engine'
 
-        score 0 engine
+        let correct, output = score 0UL 0UL engine
+        correct + output
 
-    let evaluate (settings: EvaluationSettings) (organism: Organism) : Fitness =
+    let evaluate (settings: EvaluationSettings) (organism: OrganismT) : Fitness =
         let program = organism
 
         let engine' =
-            settings.BaseEngine
-            |> Engine.loadFromBuffer program
+            Engine.initFromBuffer settings.InstructionSet program
 
-        let target = settings.Target
+        // Get the raw score that being (number output + number correct)
+        let raw = engine' |> score settings |> float
 
-        let correct = engine' |> score target |> float
-        let length = target.BaseStream.Length |> float
+        // -1.0 -> no output, none correct
+        //  0.0 -> full output, none correct
+        // +1.0 -> full output, all correct
 
-        correct / length
+        // Make sure to `* 2.0` since a perfect `raw` score is 2 times the length of the target 
+        let max = (settings.TargetLength |> float) * 2.0
 
-    let toEvaluated (settings: EvaluationSettings) (organism: Organism) : EvaluatedOrganism =
+        raw / max * 2.0 - 1.0
+
+    let isOptimalFitness (settings: EvaluationSettings) (fitness: Fitness) : bool =
+        fitness >= 1.0
+
+    let toEvaluated (settings: EvaluationSettings) (organism: OrganismT) : EvaluatedOrganism =
         (organism, organism |> evaluate settings)
 
-    let crossover (parents: OrganismPair) : Organism =
-        // Again like the chosen selection method, we really don't know how well this will work
-        // until we actually try it.
-        //
-        // Here we have implemented a one-point crossover which result in a new program like:
-        //
-        //    [ ----- Parent A ------ | ----- Parent B ------ ]
-        //
-        // Where the mid-point is where the programs will crossover
-
+    let crossover (parents: OrganismPair) : OrganismT =
         let parentA, parentB = parents
         
         // Assume they are equal length for now
@@ -106,7 +122,7 @@ module Organism =
         let midpoint = random.Next(0, length)
 
         let getSource i =
-            if i < midpoint then
+            if random.NextDouble() < 0.50 then
                 parentA
             else
                 parentB
@@ -115,7 +131,7 @@ module Organism =
             let source = (getSource i)
             source.[i])
 
-    let mutate (organism: Organism) : Organism =
+    let mutate (organism: OrganismT) : OrganismT =
         let length = Array.length organism
 
         let min = 1
@@ -134,10 +150,13 @@ module Organism =
 
 module Population =
 
-    let create (settings: PopulationSettings) : Population =
-        Array.init settings.PopulationCount (fun _ -> Organism.createRandom settings.ProgramLength)
+    let create (settings: PopulationSettings) : PopulationT =
+        let pregen = Helpers.prepareRandomByte settings.InstructionSet
 
-    let evaluate (settings: EvaluationSettings) (population: Population) : EvaluatedPopulation =
+        Array.init settings.PopulationCount
+            (fun _ -> Organism.createRandom settings.ProgramLength pregen)
+
+    let evaluate (settings: EvaluationSettings) (population: PopulationT) : EvaluatedPopulation =
         population
         |> Array.map (Organism.toEvaluated settings)
 
@@ -151,20 +170,31 @@ module Population =
         population
         |> Array.sortInPlaceBy snd
 
-        // The denominator of the rank fraction is twice the length
-        // So that if for example you had a population of 4 organisms it would end up like this:
-        //   4th -> 1/8
-        //   3rd -> 2/8
-        //   2nd -> 3/8
-        //   1st -> 4/8
-        let denom = length * 2 |> float
-        
         // Replace the fitness with the probability percent
         let ranked =
-            population
-            |> Array.mapi (fun i (prgm, _) -> 
-                let percent = (i |> float) / denom
-                (prgm, percent))
+            // The denominator of the rank fraction is length
+            // Of course we will need to renormalize the ranks so that when summed they add up to 1.0
+            let denom = length |> float
+
+            let raw =
+                population
+                |> Array.mapi (fun i (prgm, _) -> 
+                    let numer = i + 1 |> float
+                    let value = numer / denom
+                    (prgm, value))
+
+            let sum = raw |> Array.sumBy snd
+
+            // Renormalize
+            raw
+            |> Array.map (fun (pgrm, value) -> (pgrm, value / sum))
+
+        
+        // Commented out for performance, though the ranked percentages should add up to 1.0
+        //
+        //   let sum = ranked |> Array.sumBy snd
+        //   printfn "debug: ranked sum = %f" sum
+        //   assert (sum - 1.0 < 0.00001)
 
         let getNextMate () =
             let x = random.NextDouble()
@@ -178,7 +208,7 @@ module Population =
                 if remaining' <= 0.0 then
                     organism
                 else
-                    choose (pos + 1) remaining
+                    choose (pos + 1) remaining'
             
             choose 0 x
 
@@ -189,12 +219,14 @@ module Population =
         |> Array.map fst
         |> Array.map mate
 
-    let private crossover (population: SelectedPopulation) : Population =
+    let private crossover (population: SelectedPopulation) : PopulationT =
         population
         |> Array.map Organism.crossover
 
-    let private mutate (population: Population) : Population =
-        let rate = 0.05
+    let private mutate (population: PopulationT) : PopulationT =
+        // No, we are not going crazy with the mutation. `Oraganism.mutate` already will only mutate
+        // a small portion of the program. We just have to call it to do so.
+        let rate = 0.75
 
         let willMutate () =
             random.NextDouble() <= rate
@@ -206,7 +238,7 @@ module Population =
             else
                 x)
 
-    let reproduce (population: SelectedPopulation) : Population =
+    let reproduce (population: SelectedPopulation) : PopulationT =
         population
         |> crossover
         |> mutate

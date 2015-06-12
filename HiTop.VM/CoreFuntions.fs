@@ -8,6 +8,14 @@ module StackElement =
     | false -> hitop_false
     | true  -> hitop_true
 
+module ByteCode =
+    let toString = function
+    | Value raw         -> sprintf "%d" raw
+    | Instruction insr  -> insr.ShortName
+    | EncodedByteMarker -> "$"
+    | LoopBeginMarker   -> "["
+    | LoopEndMarker     -> "]"
+
 module Stack =
     let toString (stack: Stack) =
         stack
