@@ -13,6 +13,11 @@ let printHeader () =
     printfn "info: started at %s" (System.DateTime.Now.ToString())
 
 let evolveUntilOptimal evaluationSettings initialPopulation =
+    let selectionSettings = {
+        Rounds = 4
+        EliteCount = 2
+    }
+
     let rec loop gen population =
         let evaluatedPopulation =
             population
@@ -48,7 +53,7 @@ let evolveUntilOptimal evaluationSettings initialPopulation =
 
         let nextPopulation =
             evaluatedPopulation
-            |> Population.select
+            |> Population.select selectionSettings
             |> Population.reproduce
 
         loop (gen + 1) nextPopulation

@@ -13,12 +13,27 @@ let private score (settings: EvaluationSettings) engine =
         let engine' = engine |> Engine.step
             
         let length = settings.TargetLength
+        let lengthf = length |> float
 
         let willStop =
             let isHalted = engine'.IsHalted
-            let exceededMaxCycles = engine'.Cycles > (1e6 |> uint64)
-            let exceededMaxStackSize = engine'.Stack.Count > ((length * 2L) |> int)
+            let exceededMaxCycles = engine'.Cycles > (1e7 |> uint64)
+            
+            if exceededMaxCycles then
+                printfn "debug: max cycles exceeded"
+            else ()
+
+            let exceededMaxStackSize = engine'.Stack.Count > ((lengthf * 4.0) |> int)
+            
+            if exceededMaxStackSize then
+                printfn "debug: max stack size reached"
+            else ()
+
             let exceededMaxOutput = (outputCount |> int64) >= length
+
+            if exceededMaxOutput then
+                printfn "debug: max output length reached"
+            else ()
 
             isHalted
             || exceededMaxCycles
@@ -106,6 +121,11 @@ let toEvaluated (settings: EvaluationSettings) (organism: OrganismT) : Evaluated
 
 let crossover (parents: OrganismPair) : OrganismT =
     let parentA, parentB = parents
+
+    // Check if we even need to do crossover if we are trying to save an "elite"
+    if parentA = parentB then
+        parentA
+    else
         
     // Assume they are equal length for now
     assert (parentA.Length = parentB.Length)
