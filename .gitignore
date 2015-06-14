@@ -1,5 +1,10 @@
 bin/
 obj/
+Debug/
+Release/
 packages/
+
 *.suo
 *.DotSettings.user
+*.sdf
+*.pdb
