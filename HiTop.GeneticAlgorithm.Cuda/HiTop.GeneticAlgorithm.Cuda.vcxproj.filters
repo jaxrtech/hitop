@@ -5,7 +5,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Util.h" />
-    <ClInclude Include="algo.cuh" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />
