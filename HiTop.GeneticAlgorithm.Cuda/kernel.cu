@@ -8,41 +8,22 @@
 #include <thrust/device_delete.h>
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
+
+#include <thrust/sort.h>
+#include <thrust/logical.h>
 #include <thrust/random.h>
 
 #include "util.h"
 
-bool try_read_file(std::string input_path, thrust::host_vector<uint8_t>* data, std::streamsize* size)
-{
-	// open the file
-	std::ifstream file(input_path, std::ios::binary);
-	if (!file.is_open()) {
-		std::cerr << "error: cannot open input file" << std::endl;
-		return false;
-	}
-
-	// prevent eating new lines in binary mode
-	file.unsetf(std::ios::skipws);
-
-	// get its size:
-	file.seekg(0, std::ios::end);
-	*size = file.tellg();
-	file.seekg(0, std::ios::beg);
-
-	// reserve capacity
-	data->clear();
-	data->reserve(*size);
-
-	// read the data:
-	data->insert(data->begin(),
-			     std::istream_iterator<uint8_t>(file),
-			     std::istream_iterator<uint8_t>());
-
-	return true;
-}
-
 namespace hitop {
 namespace algo {
+
+struct Settings
+{
+	size_t min_program_size;
+	size_t max_program_size;
+	size_t block_size;
+};
 
 namespace util {
 
@@ -91,25 +72,18 @@ struct ProgramDescriptor
 {
 	size_t pos;
 	size_t length;
+	float score;
 };
 
-
-struct Settings
-{
-	size_t min_program_size;
-	size_t max_program_size;
-	size_t block_size;
-};
 
 struct create_random : public thrust::unary_function<size_t, ProgramDescriptor>
 {
 private:
-	program_descriptor::Settings* settings;
+	algo::Settings* settings;
+	thrust::device_ptr<algo::Settings> settings_ptr;
 
 public:
-	thrust::device_ptr<program_descriptor::Settings> settings_ptr;
-
-	create_random(thrust::device_ptr<program_descriptor::Settings> settings_ptr)
+	create_random(thrust::device_ptr<algo::Settings> settings_ptr)
 		: settings_ptr(settings_ptr)
 		, settings(settings_ptr.get())
 	{ }
@@ -125,6 +99,7 @@ public:
 		ProgramDescriptor descriptor;
 		descriptor.pos = settings->block_size * index;
 		descriptor.length = program_length(rng);
+		descriptor.score = NAN;
 
 		return descriptor;
 	}
@@ -134,18 +109,39 @@ public:
 
 namespace program {
 
-struct fill : public thrust::unary_function<program_descriptor::ProgramDescriptor, uint8_t>
+struct SelectionResult
 {
+	enum class Mode { Single, Pair };
+
+	Mode mode;
+	union {
+		struct { size_t single_index; };
+		struct { thrust::pair<size_t, size_t> pair_indices; };
+	};
+
+	SelectionResult(size_t index)
+		: mode(Mode::Single)
+		, single_index(index)
+	{ }
+
+	SelectionResult(size_t parent_index_a, size_t parent_index_b)
+		: mode(Mode::Pair)
+		, pair_indices(parent_index_a, parent_index_b)
+	{ }
+};
+
+struct fill : public thrust::unary_function<program_descriptor::ProgramDescriptor&, void>
+{
+private:
 	thrust::device_ptr<uint8_t> pool;
 
+public:
 	fill(thrust::device_ptr<uint8_t> pool)
 		: pool(pool)
-	{
-		
-	}
+	{ }
 
 	__host__ __device__
-		uint8_t operator()(program_descriptor::ProgramDescriptor descriptor)
+		void operator()(program_descriptor::ProgramDescriptor& descriptor)
 	{
 		uint32_t seed = hitop::algo::util::hash64_32(descriptor.pos);
 
@@ -158,10 +154,34 @@ struct fill : public thrust::unary_function<program_descriptor::ProgramDescripto
 
 			pool[i] = byte_range(rng);
 		}
-
-		return 0;
 	}
 };
+
+struct score : public thrust::unary_function<program_descriptor::ProgramDescriptor&, void>
+{
+private:
+	thrust::device_ptr<uint8_t> pool;
+
+public:
+	score(thrust::device_ptr<uint8_t> pool)
+		: pool(pool)
+	{
+	}
+
+	__host__ __device__
+		void operator()(program_descriptor::ProgramDescriptor& descriptor)
+	{
+		// TODO: Dummy scoring function
+
+		uint32_t seed = hitop::algo::util::hash64_32(descriptor.pos);
+
+		thrust::default_random_engine rng(seed);
+		thrust::uniform_real_distribution<float> score_range(0, descriptor.length);
+
+		descriptor.score = score_range(rng);
+	}
+};
+
 
 } // namespace program
 
@@ -178,13 +198,13 @@ int main(int argc, char* argv[])
 
 	thrust::host_vector<uint8_t> target_h;
 	std::streamsize target_length;
-	bool result = try_read_file(settings.input_path, &target_h, &target_length);
+	bool result = hitop::util::try_read_file(settings.input_path, &target_h, &target_length);
 	if (!result) {
 		return -1;
 	}
 
 	if (target_length <= 0) {
-		std::cerr << "error: file is empty and cannot be compressed" << std::endl;
+		std::cerr << "error: todo: file is empty and will not be compressed" << std::endl;
 		return -1;
 	}
 
@@ -212,28 +232,38 @@ int main(int argc, char* argv[])
 		<< std::endl;
 
 	//
-	// Run the algo
+	// Set algorithm Settings
 	//
 
-	// Settings
+	using namespace hitop;
 	using namespace hitop::algo;
 	using hitop::algo::program_descriptor::ProgramDescriptor;
 
 	const size_t population_count = 100;
 	assert(population_count > 0);
 
-	program_descriptor::Settings program_settings_h;
+	const size_t selection_elites = 2;
+
+	const bool enable_stats_output = true;
+	const size_t generations_per_stats_output = 1;
+
+	algo::Settings program_settings_h;
 	program_settings_h.min_program_size = target_length * (0.75);
 	program_settings_h.max_program_size = target_length;
 	program_settings_h.block_size = target_length;
 
-	auto program_settings_d = thrust::device_new<program_descriptor::Settings>();
-	cudaMemcpy(program_settings_d.get(), &program_settings_h, sizeof(program_descriptor::Settings), cudaMemcpyHostToDevice);
+	thrust::device_ptr<algo::Settings> program_settings_d = thrust::device_new<algo::Settings>();
+	cudaMemcpy(program_settings_d.get(), &program_settings_h, sizeof(algo::Settings), cudaMemcpyHostToDevice);
 
 	const size_t program_pool_size = population_count * target_length;
 	assert(program_pool_size > 0);
 	
-	// Setup vectors
+	size_t generation_num = 0;
+	
+	//
+	// Allocate device_vectors
+	//
+
 	const size_t program_descriptors_data_size = sizeof(program_descriptor::ProgramDescriptor) * population_count;
 
 	std::cout
@@ -254,16 +284,38 @@ int main(int argc, char* argv[])
 	const size_t program_pool_data_size = sizeof(uint8_t) * program_pool_size;
 
 	std::cout
-		<< "debug: allocating program pool "
+		<< "debug: allocating program pools "
 		<< "(" << program_pool_data_size << " bytes)..."
 		<< std::endl;
 
 	thrust::device_vector<uint8_t> program_pool(program_pool_size);
+
+	thrust::device_vector<uint8_t> program_pool_temp(program_pool_size);
 	
 	std::cout
 		<< "debug: done"
 		<< std::endl
 		<< std::endl;
+
+	//
+
+	const size_t selection_results_data_size = sizeof(program::SelectionResult) * program_pool_size;
+
+	std::cout
+		<< "debug: allocating selection results "
+		<< "(" << selection_results_data_size << " bytes)..."
+		<< std::endl;
+
+	thrust::device_vector<program::SelectionResult> selection_results(program_pool_size);
+
+	std::cout
+		<< "debug: done"
+		<< std::endl
+		<< std::endl;
+
+	//
+	// Initialize initial generation
+	//
 
 	// Initialize program descriptors to random lengths
 	std::cout
@@ -293,6 +345,82 @@ int main(int argc, char* argv[])
 		<< "debug: done"
 		<< std::endl
 		<< std::endl;
+
+
+	//
+	// Evaluate fitness of initial generation 
+	//
+
+	thrust::for_each(program_descriptors.begin(),
+					 program_descriptors.end(),
+					 program::score(program_pool.data()));
+
+	//
+	// Sort program descriptors by their scores descending
+	//
+
+	auto ordering = [](const ProgramDescriptor& a, const ProgramDescriptor& b) {
+		return a.score > b.score;
+	};
+
+	thrust::sort(program_descriptors.begin(),
+				 program_descriptors.end(),
+				 ordering);
+
+	//
+	// Calculate statistics on current scores if necessary
+	//
+
+	if (enable_stats_output
+		&& generation_num % generations_per_stats_output == 0) {
+
+		ProgramDescriptor best = *program_descriptors.begin();
+		ProgramDescriptor worst = *program_descriptors.end();
+
+		auto reducer = [](const ProgramDescriptor& a, const ProgramDescriptor& b) {
+			return a.score + b.score;
+		};
+
+		auto sum = thrust::reduce(program_descriptors.begin(),
+							      program_descriptors.end(),
+								  0,
+								  reducer);
+
+		auto avg = sum / program_descriptors.size();
+
+		std::cout
+			<< "gen " << generation_num << ": "
+			<< "best = " << best.score << " | "
+			<< "avg = " << avg << " | "
+			<< "worst = " << worst.score
+			<< std::endl;
+	}
+
+	//
+	// Selection process
+	//
+
+
+	//
+	// Select elites if setting specified
+	//
+
+	auto selection_results_start = selection_results.begin();
+
+	if (selection_elites > 0) {
+		thrust::transform(thrust::counting_iterator<size_t>(0),
+						  thrust::counting_iterator<size_t>(selection_elites),
+						  selection_results_start,
+						  [](const size_t i){ return program::SelectionResult(i); });
+
+		thrust::advance(selection_results_start, selection_elites);
+	}
+
+	//
+	// Run the selection method on the rest
+	//
+
+	// TODO: Finish the rest of this
 
 	//
 	// End algo
