@@ -68,11 +68,13 @@ uint32_t hash64_32(uint64_t key)
 
 namespace program_descriptor {
 
+typedef float score_t;
+
 struct ProgramDescriptor
 {
 	size_t pos;
 	size_t length;
-	float score;
+	score_t score;
 };
 
 
@@ -105,30 +107,77 @@ public:
 	}
 };
 
+struct greater_score : public thrust::binary_function<ProgramDescriptor, ProgramDescriptor, bool>
+{
+	__host__ __device__
+		bool operator()(const ProgramDescriptor& a, const ProgramDescriptor& b)
+	{
+		return a.score > b.score;
+	}
+};
+
+struct score : public thrust::unary_function<ProgramDescriptor, score_t>
+{
+	__host__ __device__
+		score_t operator()(const ProgramDescriptor& x)
+	{
+		return x.score;
+	}
+};
+
 } // namespace program_descriptor
 
-namespace program {
+namespace selection_result {
+
+enum class Mode { Single, Pair };
 
 struct SelectionResult
 {
-	enum class Mode { Single, Pair };
-
 	Mode mode;
+
 	union {
 		struct { size_t single_index; };
-		struct { thrust::pair<size_t, size_t> pair_indices; };
+
+		struct {
+			size_t parent_index_a;
+			size_t parent_index_b;
+		};
 	};
-
-	SelectionResult(size_t index)
-		: mode(Mode::Single)
-		, single_index(index)
-	{ }
-
-	SelectionResult(size_t parent_index_a, size_t parent_index_b)
-		: mode(Mode::Pair)
-		, pair_indices(parent_index_a, parent_index_b)
-	{ }
 };
+
+__host__ __device__
+SelectionResult create_single_index(const size_t index)
+{
+	SelectionResult result;
+	result.mode = Mode::Single;
+	result.single_index = index;
+
+	return result;
+}
+
+__host__ __device__
+SelectionResult create_pair_indices(const size_t parent_index_a, const size_t parent_index_b)
+{
+	SelectionResult result;
+	result.mode = Mode::Pair;
+	result.parent_index_a = parent_index_a;
+	result.parent_index_b = parent_index_b;
+
+	return result;
+}
+
+struct from_index : public thrust::unary_function<size_t, SelectionResult>
+{
+	__host__ __device__
+		SelectionResult operator()(size_t index)
+	{
+		return create_single_index(index);
+	}
+};
+
+} // namespace selection_result
+
+namespace program {
 
 struct fill : public thrust::unary_function<program_descriptor::ProgramDescriptor&, void>
 {
@@ -219,6 +268,18 @@ int main(int argc, char* argv[])
 		<< "input file: '" << settings.input_path << std::endl
 		<< "size: " << target_length << std::endl;
 
+	// Wait for CUDA to initialize
+	std::cout
+		<< "info: waiting for CUDA to initialize and warm up..."
+		<< std::endl;
+
+	cudaFree(0);
+
+	std::cout
+		<< "info: done"
+		<< std::endl
+		<< std::endl;
+
 	// Copy to device
 	std::cout
 		<< "debug: copying target file to device..."
@@ -237,7 +298,8 @@ int main(int argc, char* argv[])
 
 	using namespace hitop;
 	using namespace hitop::algo;
-	using hitop::algo::program_descriptor::ProgramDescriptor;
+	using algo::selection_result::SelectionResult;
+	using algo::program_descriptor::ProgramDescriptor;
 
 	const size_t population_count = 100;
 	assert(population_count > 0);
@@ -299,14 +361,14 @@ int main(int argc, char* argv[])
 
 	//
 
-	const size_t selection_results_data_size = sizeof(program::SelectionResult) * program_pool_size;
+	const size_t selection_results_data_size = sizeof(SelectionResult) * program_pool_size;
 
 	std::cout
 		<< "debug: allocating selection results "
 		<< "(" << selection_results_data_size << " bytes)..."
 		<< std::endl;
 
-	thrust::device_vector<program::SelectionResult> selection_results(program_pool_size);
+	thrust::device_vector<SelectionResult> selection_results(program_pool_size);
 
 	std::cout
 		<< "debug: done"
@@ -359,13 +421,11 @@ int main(int argc, char* argv[])
 	// Sort program descriptors by their scores descending
 	//
 
-	auto ordering = [](const ProgramDescriptor& a, const ProgramDescriptor& b) {
-		return a.score > b.score;
-	};
+	using namespace thrust::placeholders;
 
 	thrust::sort(program_descriptors.begin(),
 				 program_descriptors.end(),
-				 ordering);
+				 program_descriptor::greater_score());
 
 	//
 	// Calculate statistics on current scores if necessary
@@ -374,17 +434,14 @@ int main(int argc, char* argv[])
 	if (enable_stats_output
 		&& generation_num % generations_per_stats_output == 0) {
 
-		ProgramDescriptor best = *program_descriptors.begin();
-		ProgramDescriptor worst = *program_descriptors.end();
+		ProgramDescriptor best = program_descriptors.front();
+		ProgramDescriptor worst = program_descriptors.back();
 
-		auto reducer = [](const ProgramDescriptor& a, const ProgramDescriptor& b) {
-			return a.score + b.score;
-		};
-
-		auto sum = thrust::reduce(program_descriptors.begin(),
-							      program_descriptors.end(),
-								  0,
-								  reducer);
+		auto sum = thrust::transform_reduce(program_descriptors.begin(),
+					                        program_descriptors.end(),
+											program_descriptor::score(),
+								            0,
+								            thrust::plus<program_descriptor::score_t>());
 
 		auto avg = sum / program_descriptors.size();
 
@@ -411,7 +468,7 @@ int main(int argc, char* argv[])
 		thrust::transform(thrust::counting_iterator<size_t>(0),
 						  thrust::counting_iterator<size_t>(selection_elites),
 						  selection_results_start,
-						  [](const size_t i){ return program::SelectionResult(i); });
+						  selection_result::from_index());
 
 		thrust::advance(selection_results_start, selection_elites);
 	}
