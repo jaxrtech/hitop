@@ -151,9 +151,6 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="algo\organism.cu" />
-    <CudaCompile Include="algo\population.cu" />
-    <CudaCompile Include="algo\util.cu" />
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
   <ItemGroup>
@@ -161,10 +158,6 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="algo.cuh" />
-    <ClInclude Include="algo\organism.cuh" />
-    <ClInclude Include="algo\population.cuh" />
-    <ClInclude Include="algo\util.cuh" />
-    <ClInclude Include="bounded_value.cuh" />
     <ClInclude Include="Util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

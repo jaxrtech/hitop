@@ -5,35 +5,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Util.h" />
-    <ClInclude Include="algo\organism.cuh">
-      <Filter>algo</Filter>
-    </ClInclude>
-    <ClInclude Include="algo\population.cuh">
-      <Filter>algo</Filter>
-    </ClInclude>
-    <ClInclude Include="algo\util.cuh">
-      <Filter>algo</Filter>
-    </ClInclude>
-    <ClInclude Include="bounded_value.cuh">
-      <Filter>algo</Filter>
-    </ClInclude>
     <ClInclude Include="algo.cuh" />
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="algo">
-      <UniqueIdentifier>{ffbd7b12-2f53-43a8-9a5a-be2b4299d6be}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <CudaCompile Include="algo\organism.cu">
-      <Filter>algo</Filter>
-    </CudaCompile>
-    <CudaCompile Include="algo\population.cu">
-      <Filter>algo</Filter>
-    </CudaCompile>
-    <CudaCompile Include="algo\util.cu">
-      <Filter>algo</Filter>
-    </CudaCompile>
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
 </Project>

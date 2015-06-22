@@ -9,3 +9,4 @@ packages/
 *.vcxproj.user
 *.sdf
 *.pdb
+*.opensdf
