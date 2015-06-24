@@ -61,6 +61,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <CudaCompile>
       <CodeGeneration>compute_50,sm_50</CodeGeneration>
       <InterleaveSourceInPTX>true</InterleaveSourceInPTX>
+      <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -84,16 +85,32 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     </PostBuildEvent>
     <CudaCompile>
       <CodeGeneration>compute_50,sm_50</CodeGeneration>
+      <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <CudaCompile Include="hitop\algo\crossover_method.cu" />
+    <CudaCompile Include="hitop\algo\program.cu" />
+    <CudaCompile Include="hitop\algo\program_descriptor.cu" />
+    <CudaCompile Include="hitop\algo\selection_method.cu" />
+    <CudaCompile Include="hitop\algo\selection_result.cu" />
+    <CudaCompile Include="hitop\algo\util.cu" />
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Util.cpp" />
+    <ClCompile Include="hitop\util.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Util.h" />
+    <ClInclude Include="hitop\algo.cuh" />
+    <ClInclude Include="hitop\algo\crossover_method.cuh" />
+    <ClInclude Include="hitop\algo\program.cuh" />
+    <ClInclude Include="hitop\algo\program_descriptor.cuh" />
+    <ClInclude Include="hitop\algo\selection_method.cuh" />
+    <ClInclude Include="hitop\algo\selection_result.cuh" />
+    <ClInclude Include="hitop\algo\settings.cuh" />
+    <ClInclude Include="hitop\algo\util.cuh" />
+    <ClInclude Include="hitop\util.h" />
+    <ClInclude Include="thrust_ext.cuh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

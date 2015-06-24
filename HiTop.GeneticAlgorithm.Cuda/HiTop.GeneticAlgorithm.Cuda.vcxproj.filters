@@ -1,12 +1,67 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="Util.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Util.h" />
-  </ItemGroup>
-  <ItemGroup>
     <CudaCompile Include="kernel.cu" />
+    <CudaCompile Include="hitop\algo\util.cu">
+      <Filter>hitop\algo</Filter>
+    </CudaCompile>
+    <CudaCompile Include="hitop\algo\program_descriptor.cu">
+      <Filter>hitop\algo</Filter>
+    </CudaCompile>
+    <CudaCompile Include="hitop\algo\selection_result.cu">
+      <Filter>hitop\algo</Filter>
+    </CudaCompile>
+    <CudaCompile Include="hitop\algo\selection_method.cu">
+      <Filter>hitop\algo</Filter>
+    </CudaCompile>
+    <CudaCompile Include="hitop\algo\crossover_method.cu">
+      <Filter>hitop\algo</Filter>
+    </CudaCompile>
+    <CudaCompile Include="hitop\algo\program.cu">
+      <Filter>hitop\algo</Filter>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="hitop">
+      <UniqueIdentifier>{c2b5f91d-5655-4ca0-947d-54e11db0f177}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="hitop\algo">
+      <UniqueIdentifier>{ffb08674-e08c-42a4-a804-63ad19391d2b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="hitop\util.cpp">
+      <Filter>hitop</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="hitop\algo.cuh">
+      <Filter>hitop</Filter>
+    </ClInclude>
+    <ClInclude Include="hitop\algo\util.cuh">
+      <Filter>hitop\algo</Filter>
+    </ClInclude>
+    <ClInclude Include="hitop\util.h">
+      <Filter>hitop</Filter>
+    </ClInclude>
+    <ClInclude Include="hitop\algo\program_descriptor.cuh">
+      <Filter>hitop\algo</Filter>
+    </ClInclude>
+    <ClInclude Include="hitop\algo\settings.cuh">
+      <Filter>hitop\algo</Filter>
+    </ClInclude>
+    <ClInclude Include="hitop\algo\selection_result.cuh">
+      <Filter>hitop\algo</Filter>
+    </ClInclude>
+    <ClInclude Include="hitop\algo\selection_method.cuh">
+      <Filter>hitop\algo</Filter>
+    </ClInclude>
+    <ClInclude Include="hitop\algo\crossover_method.cuh">
+      <Filter>hitop\algo</Filter>
+    </ClInclude>
+    <ClInclude Include="hitop\algo\program.cuh">
+      <Filter>hitop\algo</Filter>
+    </ClInclude>
+    <ClInclude Include="thrust_ext.cuh" />
   </ItemGroup>
 </Project>
