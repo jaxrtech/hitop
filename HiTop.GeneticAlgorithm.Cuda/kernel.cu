@@ -3,8 +3,14 @@
 #include <thrust/transform.h>
 #include "thrust_ext.cuh"
 
+#include "spdlog/spdlog.h"
+
 #include "hitop/util.h"
 #include "hitop/algo.cuh"
+
+namespace spd = spdlog;
+
+auto logger = spd::stdout_logger_mt("kernel");
 
 int main(int argc, char* argv[])
 {
@@ -22,46 +28,31 @@ int main(int argc, char* argv[])
 	}
 
 	if (target_length <= 0) {
-		std::cerr << "error: todo: file is empty and will not be compressed" << std::endl;
+		logger->error("todo: file is empty and will not be compressed");
 		return -1;
 	}
 
 	// Actually do stuff
 	hitop::util::output_header(std::cout);
 
-	std::cout
-		<< "info: started at " << hitop::util::get_timestamp_readable() 
-		<< std::endl;
+	logger->info("started algo");
 
-	std::cout
-		<< "input file: '" << settings.input_path << std::endl
-		<< "size: " << target_length
-		<< std::endl
-		<< std::endl;
+	logger->debug() << "input file: '" << settings.input_path;
+	logger->debug() << "size: " << target_length;
 
 	// Wait for CUDA to initialize
-	std::cout
-		<< "info: waiting for CUDA to initialize and warm up..."
-		<< std::endl;
+	logger->info("waiting for CUDA to initialize and warm up...");
 
 	cudaFree(0);
 
-	std::cout
-		<< "info: done"
-		<< std::endl
-		<< std::endl;
+	logger->info("done");
 
 	// Copy to device
-	std::cout
-		<< "debug: copying target file to device..."
-		<< std::endl;
+	logger->debug("copying target file to device...");
 
 	thrust::device_vector<char> target_d = target_h;
 
-	std::cout
-		<< "debug: done"
-		<< std::endl
-		<< std::endl;
+	logger->debug("done");
 
 	//
 	// Set algorithm Settings
@@ -101,54 +92,41 @@ int main(int argc, char* argv[])
 
 	const size_t program_descriptors_data_size = sizeof(program_descriptor::ProgramDescriptor) * population_count;
 
-	std::cout
-		<< "debug: allocating "
-		<< population_count << " program descriptors "
-		<< "(" << program_descriptors_data_size << " bytes)..."
-		<< std::endl;
+	logger->debug()
+		<< "allocating 2 pools of " << population_count << " program descriptors "
+		<< "(" << program_descriptors_data_size << " bytes)...";
 
 	thrust::device_vector<program_descriptor::ProgramDescriptor> program_descriptors(population_count);
 
 	thrust::device_vector<program_descriptor::ProgramDescriptor> program_descriptors_temp(population_count);
 
-	std::cout
-		<< "debug: done"
-		<< std::endl
-		<< std::endl;
+	logger->debug("done");
 
 	//
 
 	const size_t program_pool_data_size = sizeof(uint8_t) * program_pool_size;
 
-	std::cout
-		<< "debug: allocating program pools "
-		<< "(" << program_pool_data_size << " bytes)..."
-		<< std::endl;
+	logger->debug()
+		<< "allocating 2 program data pools "
+		<< "(" << program_pool_data_size << " bytes each)...";
 
 	thrust::device_vector<uint8_t> program_pool(program_pool_size);
 
 	thrust::device_vector<uint8_t> program_pool_temp(program_pool_size);
 	
-	std::cout
-		<< "debug: done"
-		<< std::endl
-		<< std::endl;
+	logger->debug("done");
 
 	//
 
 	const size_t selection_results_data_size = sizeof(SelectionResult) * program_pool_size;
 
-	std::cout
-		<< "debug: allocating selection results "
-		<< "(" << selection_results_data_size << " bytes)..."
-		<< std::endl;
+	logger->debug()
+		<< "allocating selection results "
+		<< "(" << selection_results_data_size << " bytes)...";
 
 	thrust::device_vector<SelectionResult> selection_results(program_pool_size);
 
-	std::cout
-		<< "debug: done"
-		<< std::endl
-		<< std::endl;
+	logger->debug("done");
 
 	//
 	// Setup selection settings now that we have allocated everything
@@ -168,33 +146,23 @@ int main(int argc, char* argv[])
 	//
 
 	// Initialize program descriptors to random lengths
-	std::cout
-		<< "debug: initializing program descriptors to random lengths"
-		<< std::endl;
+	logger->debug("initializing program descriptors to random lengths");
 
 	thrust::transform(thrust::counting_iterator<size_t>(0),
 					  thrust::counting_iterator<size_t>(program_descriptors.size()),
 					  program_descriptors.begin(),
 					  program_descriptor::create_random(algo_settings_d));
 	
-	std::cout
-		<< "debug: done"
-		<< std::endl
-		<< std::endl;
+	logger->debug("done");
 
 	// Fill program pool with random values per each program descriptor
-	std::cout
-		<< "debug: initializing all programs to random data"
-		<< std::endl;
+	logger->debug("initializing all programs to random data");
 
 	thrust::for_each(program_descriptors.begin(),
 					 program_descriptors.end(),
 					 program::fill(program_pool.data()));
 
-	std::cout
-		<< "debug: done"
-		<< std::endl
-		<< std::endl;
+	logger->debug("done");
 
 	bool is_stop_requested = false;
 	while (!is_stop_requested) {
@@ -235,12 +203,14 @@ int main(int argc, char* argv[])
 
 			score_t avg = sum / program_descriptors.size();
 
-			std::cout
-				<< "gen " << generation_num << ": "
-				<< "best = " << best.score << " | "
-				<< "avg = " << avg << " | "
-				<< "worst = " << worst.score
-				<< std::endl;
+			if (generation_num % generations_per_stats_output == 0)
+			{
+				logger->notice()
+					<< "gen " << generation_num << ": "
+					<< "best = " << best.score << " | "
+					<< "avg = " << avg << " | "
+					<< "worst = " << worst.score;
+			}
 		}
 
 		//
@@ -252,9 +222,7 @@ int main(int argc, char* argv[])
 		// Select elites if setting specified
 		//
 
-		std::cout
-			<< "debug: selecting elites..."
-			<< std::endl;
+		SPDLOG_DEBUG(console, "selecting elites...");
 
 		// Keep track of the position to start at in the case that we use elites to skip running the
 		// selection method over some of the programs
@@ -273,36 +241,26 @@ int main(int argc, char* argv[])
 			thrust::advance(program_descriptors_start, selection_elites);
 		}
 
-		std::cout
-			<< "debug: done"
-			<< std::endl
-			<< std::endl;
+		SPDLOG_DEBUG(console, "done");
 
 		//
 		// Run the selection method on the rest
 		//
 
-		std::cout
-			<< "debug: selecting the rest of population with selection method..."
-			<< std::endl;
+		SPDLOG_DEBUG(console, "selecting the rest of population with selection method...");
 
 		thrust::transform(thrust::counting_iterator<size_t>(start_index),
 						  thrust::counting_iterator<size_t>(program_descriptors.size()),
 						  selection_results_start,
 						  selection_method::tournament_selection(selection_context_d));
 
-		std::cout
-			<< "debug: done"
-			<< std::endl
-			<< std::endl;
+		SPDLOG_DEBUG(console, "done");
 
 		//
 		// Crossover selection results
 		//
 
-		std::cout
-			<< "debug: running crossover on selected population with crossover method..."
-			<< std::endl;
+		SPDLOG_DEBUG(console, "running crossover on selected population with crossover method...");
 
 		thrust::for_each(selection_results.begin(),
 						 selection_results.end(),
@@ -312,10 +270,8 @@ int main(int argc, char* argv[])
 								 program_descriptors_temp.data(), program_pool_temp.data(),
 								 program_pool.size()));
 
-		std::cout
-			<< "debug: done"
-			<< std::endl
-			<< std::endl;
+
+		SPDLOG_DEBUG(console, "done");
 
 		//
 		// Mutate newly generated population
@@ -352,9 +308,8 @@ int main(int argc, char* argv[])
 	//thrust::device_delete(selection_context_d);
 	//thrust::device_delete(random_context_d);
 
-	std::cout
-		<< "info: algorithm ran to completion!" << std::endl
-		<< "press any key to exit..." << std::endl;
+	logger->info("algorithm ran to completion!");
+	logger->info("press any key to exit...");
 
 	std::cin.ignore();
 	return 0;
